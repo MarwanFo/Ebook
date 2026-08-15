@@ -1,0 +1,30 @@
+{
+  "name": "bookflow",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=20.18.0 <=22.x",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@bookflow/*\" dev",
+    "dev:api": "pnpm --filter @bookflow/api dev",
+    "dev:web": "pnpm --filter @bookflow/web dev",
+    "build": "pnpm --filter @bookflow/shared-types build && pnpm --filter @bookflow/api build && pnpm --filter @bookflow/web build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "test:e2e": "pnpm --filter @bookflow/api test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
+    "db:generate": "pnpm --filter @bookflow/api db:generate",
+    "db:validate": "pnpm --filter @bookflow/api db:validate",
+    "db:migrate": "pnpm --filter @bookflow/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @bookflow/api db:migrate:deploy",
+    "db:studio": "pnpm --filter @bookflow/api db:studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.1"
+  }
+}

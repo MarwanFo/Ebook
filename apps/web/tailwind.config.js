@@ -1,0 +1,75 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        paper: {
+          50: '#fcfbf9',
+          100: '#f7f4ed',
+          200: '#ede7d9',
+          300: '#dfd6c3',
+          400: '#c5b89e',
+          500: '#9b8d74',
+          600: '#736650',
+          700: '#4d4334',
+          800: '#2b251d',
+          900: '#1a1611',
+          950: '#0f0d0a',
+        },
+        ink: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617',
+        },
+        sepia: {
+          bg: '#f5edd6',
+          surface: '#faefe0',
+          border: '#e4d5b7',
+          text: '#4a3b2c',
+          muted: '#7a6855',
+        },
+        brand: {
+          50: '#fdf8f0',
+          100: '#faeedb',
+          200: '#f4dab7',
+          300: '#ecc08b',
+          400: '#e29e59',
+          500: '#d97706',
+          600: '#b45309',
+          700: '#92400e',
+          800: '#78350f',
+          900: '#451a03',
+        },
+      },
+      fontFamily: {
+        sans: [
+          'Inter',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif',
+        ],
+        serif: ['Merriweather', 'Georgia', 'Cambria', 'serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'],
+      },
+      boxShadow: {
+        book: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.08), -2px 0 4px rgba(0, 0, 0, 0.02)',
+        'book-lg':
+          '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), -4px 0 8px rgba(0, 0, 0, 0.04)',
+      },
+    },
+  },
+  plugins: [],
+};

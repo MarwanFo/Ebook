@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #fcfbf9;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f7f4ed;
+    --border-color: #ede7d9;
+    --text-primary: #1f2421;
+    --text-secondary: #6b7280;
+    --accent-color: #d97706;
+  }
+
+  html.dark {
+    --bg-primary: #121110;
+    --bg-surface: #1c1a17;
+    --bg-elevated: #26231f;
+    --border-color: #38332c;
+    --text-primary: #f3f0ea;
+    --text-secondary: #a39e93;
+    --accent-color: #f59e0b;
+  }
+
+  html.sepia {
+    --bg-primary: #f5edd6;
+    --bg-surface: #faefe0;
+    --bg-elevated: #ede3c8;
+    --border-color: #e4d5b7;
+    --text-primary: #4a3b2c;
+    --text-secondary: #7a6855;
+    --accent-color: #b45309;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+  }
+}
+
+/* Custom scrollbars for reader & panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 140, 130, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 140, 130, 0.5);
+}

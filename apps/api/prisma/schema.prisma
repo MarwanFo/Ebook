@@ -1,0 +1,169 @@
+// Prisma schema for BookFlow
+// Configured with PostgreSQL and UUID primary keys
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum BookFormat {
+  EPUB
+  PDF
+}
+
+enum BookStatus {
+  UNREAD
+  READING
+  COMPLETED
+}
+
+enum LocationType {
+  EPUB_CFI
+  PDF_PAGE
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  avatarUrl    String?
+  role         UserRole  @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  books               Book[]
+  readingProgress     ReadingProgress[]
+  bookmarks           Bookmark[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("password_reset_tokens")
+}
+
+model Book {
+  id              String     @id @default(uuid()) @db.Uuid
+  ownerId         String     @db.Uuid
+  title           String
+  author          String?
+  description     String?
+  language        String?
+  publisher       String?
+  publishedAt     DateTime?
+  isbn            String?
+  format          BookFormat
+  coverStorageKey String?
+  status          BookStatus @default(UNREAD)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  lastOpenedAt    DateTime?
+
+  owner           User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  files           BookFile[]
+  readingProgress ReadingProgress[]
+  bookmarks       Bookmark[]
+
+  @@index([ownerId])
+  @@index([title])
+  @@index([author])
+  @@index([lastOpenedAt])
+  @@map("books")
+}
+
+model BookFile {
+  id               String   @id @default(uuid()) @db.Uuid
+  bookId           String   @db.Uuid
+  storageKey       String   @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        BigInt
+  checksum         String?
+  createdAt        DateTime @default(now())
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@map("book_files")
+}
+
+model ReadingProgress {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @db.Uuid
+  bookId             String       @db.Uuid
+  locationType       LocationType
+  locationValue      String
+  progressPercentage Float        @default(0)
+  currentPage        Int?
+  totalPages         Int?
+  settingsJson       Json?
+  updatedAt          DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("reading_progress")
+}
+
+model Bookmark {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String       @db.Uuid
+  bookId             String       @db.Uuid
+  locationType       LocationType
+  locationValue      String
+  progressPercentage Float        @default(0)
+  title              String?
+  note               String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, bookId])
+  @@map("bookmarks")
+}

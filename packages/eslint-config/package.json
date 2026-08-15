@@ -1,0 +1,16 @@
+{
+  "name": "@bookflow/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "base.js",
+  "files": [
+    "base.js",
+    "nest.js",
+    "react.js"
+  ],
+  "peerDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0 || ^8.57.0"
+  }
+}

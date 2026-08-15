@@ -1,0 +1,73 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  validate-and-build:
+    name: Lint, Format, Typecheck, Test, and Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bookflow
+          POSTGRES_PASSWORD: bookflow_dev_secret
+          POSTGRES_DB: bookflow_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://bookflow:bookflow_dev_secret@localhost:5432/bookflow_dev?schema=public
+      JWT_ACCESS_SECRET: test_jwt_access_secret_minimum_32_characters_long
+      WEB_ORIGIN: http://localhost:5173
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check code formatting
+        run: pnpm format:check
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run TypeScript typechecking
+        run: pnpm typecheck
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Run end-to-end tests
+        run: pnpm test:e2e
+
+      - name: Build packages and applications
+        run: pnpm build
