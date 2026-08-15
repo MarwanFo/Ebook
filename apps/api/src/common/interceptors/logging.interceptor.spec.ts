@@ -1,6 +1,6 @@
 import { ExecutionContext, CallHandler, Logger } from '@nestjs/common';
 import { of, throwError, lastValueFrom } from 'rxjs';
-import { LoggingInterceptor } from './logging.interceptor';
+import { LoggingInterceptor, HttpRequestLog } from './logging.interceptor';
 
 describe('LoggingInterceptor', () => {
   let interceptor: LoggingInterceptor;
@@ -34,43 +34,56 @@ describe('LoggingInterceptor', () => {
     return { context, request, response };
   };
 
-  it('should log successful request with structured request ID', async () => {
+  it('should emit structured JSON logs for successful requests', async () => {
     const { context } = createMockContext({
-      requestId: 'req-test-success-001',
-      method: 'POST',
-      originalUrl: '/api/v1/auth/login',
+      requestId: 'req-test-json-001',
+      method: 'GET',
+      originalUrl: '/api/v1/health',
       statusCode: 200,
     });
 
-    const loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    let loggedMessage = '';
+    jest.spyOn(Logger.prototype, 'log').mockImplementation((msg: string) => {
+      loggedMessage = msg;
+    });
 
     const callHandler: CallHandler = {
-      handle: () => of({ success: true }),
+      handle: () => of({ status: 'ok' }),
     };
 
     const result$ = interceptor.intercept(context, callHandler);
     await lastValueFrom(result$);
 
-    expect(loggerSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[req-test-success-001] POST /api/v1/auth/login 200'),
-    );
+    expect(loggedMessage).toBeDefined();
+    const parsed: HttpRequestLog = JSON.parse(loggedMessage);
+    expect(parsed).toEqual({
+      requestId: 'req-test-json-001',
+      method: 'GET',
+      path: '/api/v1/health',
+      statusCode: 200,
+      durationMs: expect.any(Number),
+      timestamp: expect.any(String),
+    });
   });
 
-  it('should log failed request with structured request ID and error message', async () => {
+  it('should emit structured JSON error logs for failed requests without leaking sensitive bodies', async () => {
     const { context } = createMockContext({
-      requestId: 'req-test-err-002',
-      method: 'GET',
-      originalUrl: '/api/v1/ready',
-      statusCode: 503,
+      requestId: 'req-test-err-json-002',
+      method: 'POST',
+      originalUrl: '/api/v1/auth/login',
+      statusCode: 500,
     });
 
-    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    let errorMessage = '';
+    jest.spyOn(Logger.prototype, 'error').mockImplementation((msg: string) => {
+      errorMessage = msg;
+    });
 
     const callHandler: CallHandler = {
       handle: () =>
         throwError(
           () =>
-            new Error('Database connection check failed') as Error & {
+            new Error('Internal database query failure') as Error & {
               status?: number;
             },
         ),
@@ -78,9 +91,18 @@ describe('LoggingInterceptor', () => {
 
     const result$ = interceptor.intercept(context, callHandler);
 
-    await expect(lastValueFrom(result$)).rejects.toThrow('Database connection check failed');
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[req-test-err-002] GET /api/v1/ready 500'),
-    );
+    await expect(lastValueFrom(result$)).rejects.toThrow('Internal database query failure');
+
+    expect(errorMessage).toBeDefined();
+    const parsed: HttpRequestLog = JSON.parse(errorMessage);
+    expect(parsed).toEqual({
+      requestId: 'req-test-err-json-002',
+      method: 'POST',
+      path: '/api/v1/auth/login',
+      statusCode: 500,
+      durationMs: expect.any(Number),
+      timestamp: expect.any(String),
+      error: 'Internal database query failure',
+    });
   });
 });

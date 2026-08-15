@@ -8,13 +8,14 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "prepare": "pnpm --filter @bookflow/shared-types build",
     "dev": "pnpm --parallel --filter \"@bookflow/*\" dev",
     "dev:api": "pnpm --filter @bookflow/api dev",
     "dev:web": "pnpm --filter @bookflow/web dev",
     "build": "pnpm --filter @bookflow/shared-types build && pnpm --filter @bookflow/api build && pnpm --filter @bookflow/web build",
-    "lint": "pnpm -r run lint",
-    "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
+    "lint": "pnpm --filter @bookflow/shared-types build && pnpm -r run lint",
+    "typecheck": "pnpm --filter @bookflow/shared-types build && pnpm -r run typecheck",
+    "test": "pnpm --filter @bookflow/shared-types build && pnpm -r run test",
     "test:e2e": "pnpm --filter @bookflow/api test:e2e",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",

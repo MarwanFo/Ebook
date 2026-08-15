@@ -11,6 +11,18 @@ module.exports = {
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
     'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['../*apps/*', '../*packages/*'],
+            message:
+              'Direct relative imports across package boundaries are forbidden. Use package names (e.g. @bookflow/shared-types).',
+          },
+        ],
+      },
+    ],
   },
   env: {
     node: true,

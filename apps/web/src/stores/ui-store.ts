@@ -1,5 +1,3 @@
-
-
 import { create } from 'zustand';
 import { ReaderTheme } from '@bookflow/shared-types';
 
