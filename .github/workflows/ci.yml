@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.8-alpine3.21
         env:
           POSTGRES_USER: bookflow
           POSTGRES_PASSWORD: bookflow_dev_secret
@@ -21,7 +21,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U bookflow -d bookflow_dev"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -54,8 +54,8 @@ jobs:
       - name: Check code formatting
         run: pnpm format:check
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - name: Verify architectural dependency boundaries
+        run: pnpm test:boundaries
 
       - name: Run linter
         run: pnpm lint
@@ -63,10 +63,19 @@ jobs:
       - name: Run TypeScript typechecking
         run: pnpm typecheck
 
-      - name: Run unit tests
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Validate Prisma schema
+        run: pnpm db:validate
+
+      - name: Apply database migrations
+        run: pnpm db:migrate:deploy
+
+      - name: Run unit and component tests
         run: pnpm test
 
-      - name: Run end-to-end tests
+      - name: Run end-to-end tests with real PostgreSQL service
         run: pnpm test:e2e
 
       - name: Build packages and applications

@@ -17,6 +17,7 @@
     "typecheck": "pnpm --filter @bookflow/shared-types build && pnpm -r run typecheck",
     "test": "pnpm --filter @bookflow/shared-types build && pnpm -r run test",
     "test:e2e": "pnpm --filter @bookflow/api test:e2e",
+    "test:boundaries": "node scripts/test-boundary-enforcement.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
     "db:generate": "pnpm --filter @bookflow/api db:generate",
