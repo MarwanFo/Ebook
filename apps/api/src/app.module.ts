@@ -11,6 +11,7 @@ import { MailModule } from './mail/mail.module';
 import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
 import { BooksModule } from './books/books.module';
+import { ReadingModule } from './reading/reading.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
@@ -29,6 +30,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     AuthModule,
     StorageModule,
     BooksModule,
+    ReadingModule,
   ],
   providers: [
     {

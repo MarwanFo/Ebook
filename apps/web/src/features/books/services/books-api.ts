@@ -7,6 +7,7 @@ import {
   UpdateBookDto,
 } from '@bookflow/shared-types';
 import { request } from '../../../services/api-client';
+import { useAuthStore } from '../../auth/stores/auth-store';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -63,5 +64,21 @@ export const booksApi = {
 
   getBookCoverUrl(id: string): string {
     return `${API_BASE_URL}/books/${id}/cover`;
+  },
+
+  async getBookFileArrayBuffer(id: string): Promise<ArrayBuffer> {
+    const token = useAuthStore.getState().accessToken;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const response = await fetch(`${API_BASE_URL}/books/${id}/file`, {
+      credentials: 'include',
+      headers,
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load book content: ${response.status} ${response.statusText}`);
+    }
+    return response.arrayBuffer();
   },
 };

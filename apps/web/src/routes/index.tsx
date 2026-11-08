@@ -7,6 +7,7 @@ import { RegisterPage } from '../pages/RegisterPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { ReaderPage } from '../pages/ReaderPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
 import { PublicOnlyRoute } from '../features/auth/components/PublicOnlyRoute';
@@ -65,6 +66,16 @@ export const AppRoutes: React.FC = () => {
         {/* 404 Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+
+      {/* Standalone Immersive Reader Route */}
+      <Route
+        path="reader/:id"
+        element={
+          <ProtectedRoute>
+            <ReaderPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 };

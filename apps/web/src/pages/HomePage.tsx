@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, ShieldCheck, Database, Layers, Sparkles } from 'lucide-react';
 import { BookQueryDto, BookSummaryDto } from '@bookflow/shared-types';
 import { useAuthStore } from '../features/auth/stores/auth-store';
@@ -14,6 +14,7 @@ import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 
 export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
   const { status, user } = useAuthStore();
   const isAuthenticated = status === 'authenticated';
 
@@ -48,8 +49,7 @@ export const HomePage: React.FC = () => {
   };
 
   const handleReadBook = (bookId: string) => {
-    // Reader integration route for Phase 4 / 5
-    window.open(`/api/v1/books/${bookId}/file`, '_blank');
+    navigate(`/reader/${bookId}`);
   };
 
   // If user is logged in, present the Ebook Library Catalog
