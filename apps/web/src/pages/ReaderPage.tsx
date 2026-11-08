@@ -75,11 +75,5 @@ export const ReaderPage: React.FC = () => {
   }
 
   // EPUB Reader Engine
-  return (
-    <EpubReader
-      bookId={book.id}
-      bookTitle={book.title}
-      author={book.author ?? undefined}
-    />
-  );
+  return <EpubReader bookId={book.id} bookTitle={book.title} author={book.author ?? undefined} />;
 };

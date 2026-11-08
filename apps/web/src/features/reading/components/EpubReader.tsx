@@ -158,11 +158,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
       // Calculate progress percentage
       let pct = 0;
-      if (
-        bookRef.current &&
-        bookRef.current.locations &&
-        bookRef.current.locations.total
-      ) {
+      if (bookRef.current && bookRef.current.locations && bookRef.current.locations.total) {
         pct = bookRef.current.locations.percentageFromCfi(cfi) * 100;
       } else if (typeof location.start.percentage === 'number') {
         pct = location.start.percentage * 100;
