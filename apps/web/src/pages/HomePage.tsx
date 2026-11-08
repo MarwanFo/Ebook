@@ -1,10 +1,117 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BookOpen, ShieldCheck, Database, Layers, Sparkles } from 'lucide-react';
+import { BookQueryDto, BookSummaryDto } from '@bookflow/shared-types';
+import { useAuthStore } from '../features/auth/stores/auth-store';
+import { useBooks } from '../features/books/hooks/useBooks';
+import { useDeleteBook } from '../features/books/hooks/useDeleteBook';
+import { LibraryFilters } from '../features/books/components/LibraryFilters';
+import { BookGrid } from '../features/books/components/BookGrid';
+import { UploadModal } from '../features/books/components/UploadModal';
+import { BookDetailModal } from '../features/books/components/BookDetailModal';
 import { ApiHealthStatus } from '../components/health/ApiHealthStatus';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 
 export const HomePage: React.FC = () => {
+  const { status, user } = useAuthStore();
+  const isAuthenticated = status === 'authenticated';
+
+  // Library State for Authenticated View
+  const [filters, setFilters] = useState<BookQueryDto>({
+    page: 1,
+    limit: 18,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  });
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<BookSummaryDto | null>(null);
+
+  const { data: booksData, isLoading: isBooksLoading } = useBooks(
+    isAuthenticated ? filters : { page: 1, limit: 1 },
+  );
+  const deleteMutation = useDeleteBook();
+
+  const handleFilterChange = (updated: Partial<BookQueryDto>) => {
+    setFilters((prev) => ({ ...prev, ...updated }));
+  };
+
+  const handleDeleteBook = async (bookId: string) => {
+    try {
+      await deleteMutation.mutateAsync(bookId);
+      if (selectedBook?.id === bookId) {
+        setSelectedBook(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete book', err);
+    }
+  };
+
+  const handleReadBook = (bookId: string) => {
+    // Reader integration route for Phase 4 / 5
+    window.open(`/api/v1/books/${bookId}/file`, '_blank');
+  };
+
+  // If user is logged in, present the Ebook Library Catalog
+  if (isAuthenticated) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* Library Banner */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-border">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-text">
+              Welcome back, {user?.displayName || user?.email.split('@')[0]}
+            </h1>
+            <p className="text-sm text-text-muted mt-1">
+              Browse your digital collection, resume reading, or add new books.
+            </p>
+          </div>
+          <div className="mt-3 md:mt-0 flex items-center gap-2">
+            <span className="text-xs text-text-muted bg-surface-muted px-3 py-1.5 rounded-lg border border-border">
+              {booksData?.meta.pagination.total ?? 0} books in library
+            </span>
+          </div>
+        </div>
+
+        {/* Filters and Controls */}
+        <LibraryFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onUploadClick={() => setIsUploadOpen(true)}
+        />
+
+        {/* Books Grid */}
+        <BookGrid
+          books={booksData?.data || []}
+          isLoading={isBooksLoading}
+          pagination={booksData?.meta.pagination}
+          onPageChange={(page) => handleFilterChange({ page })}
+          onSelectBook={(book) => setSelectedBook(book)}
+          onDeleteBook={handleDeleteBook}
+          onUploadClick={() => setIsUploadOpen(true)}
+        />
+
+        {/* Upload Modal */}
+        <UploadModal
+          isOpen={isUploadOpen}
+          onClose={() => setIsUploadOpen(false)}
+          onSuccess={() => {
+            setIsUploadOpen(false);
+          }}
+        />
+
+        {/* Book Detail Modal */}
+        <BookDetailModal
+          bookSummary={selectedBook}
+          onClose={() => setSelectedBook(null)}
+          onRead={handleReadBook}
+          onDelete={handleDeleteBook}
+        />
+      </div>
+    );
+  }
+
+  // Guest Landing View
   const architectureHighlights = [
     {
       title: 'NestJS + Prisma API',
@@ -36,158 +143,62 @@ export const HomePage: React.FC = () => {
     },
   ];
 
-  const roadmapPhases = [
-    {
-      num: '1',
-      name: 'Foundation',
-      status: 'active',
-      desc: 'Monorepo, NestJS, React, Prisma, Health Monitoring',
-    },
-    {
-      num: '2',
-      name: 'Authentication',
-      status: 'upcoming',
-      desc: 'Argon2, Access & Refresh Tokens, Session Rotation',
-    },
-    {
-      num: '3',
-      name: 'Library & Storage',
-      status: 'upcoming',
-      desc: 'EPUB/PDF Uploads, Storage Drivers, Metadata & Covers',
-    },
-    {
-      num: '4',
-      name: 'EPUB Reader',
-      status: 'upcoming',
-      desc: 'EPUB.js, Two-page spreads, CFI persistence',
-    },
-    {
-      num: '5',
-      name: 'PDF Reader',
-      status: 'upcoming',
-      desc: 'PDF.js, Two-page spreads, Zoom, Page restoration',
-    },
-    {
-      num: '6',
-      name: 'Bookmarks & Dashboard',
-      status: 'upcoming',
-      desc: 'Reading statistics, Bookmarks CRUD, Quick Resume',
-    },
-    {
-      num: '7',
-      name: 'Hardening & E2E',
-      status: 'upcoming',
-      desc: 'Playwright suites, Security audits, Performance',
-    },
-  ];
-
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 animate-fade-in">
       {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-paper-100 via-paper-50 to-brand-50/50 dark:from-paper-900 dark:via-paper-950 dark:to-paper-900 border border-paper-200 dark:border-paper-800 p-8 sm:p-10 shadow-sm">
-        <div className="max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-950/80 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-semibold">
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>BookFlow Architecture — Phase 1</span>
-          </div>
+      <div className="text-center py-10 px-4 rounded-2xl bg-surface border border-border shadow-sm">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
+          <BookOpen className="w-4 h-4" />
+          <span>Realistic Ebook Reading Platform</span>
+        </div>
+        <h1 className="text-4xl font-extrabold tracking-tight text-text sm:text-5xl font-serif">
+          Read with Focus, Depth, and Authenticity
+        </h1>
+        <p className="mt-4 text-base text-text-muted max-w-2xl mx-auto leading-relaxed">
+          BookFlow brings the tactile feel of physical books into the browser with true two-page
+          spreads, EPUB & PDF support, and cross-device reading progress.
+        </p>
 
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-50 tracking-tight leading-tight">
-            Realistic Ebook Reading, <br className="hidden sm:inline" />
-            Engineered for the Web.
-          </h1>
-
-          <p className="text-sm sm:text-base text-ink-600 dark:text-paper-300 leading-relaxed">
-            Welcome to <strong>BookFlow</strong>, a production-grade ebook reader application
-            crafted for authentic physical book reading on desktop with two-page spreads, responsive
-            mobile layouts, and precise EPUB CFI & PDF page progress restoration.
-          </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-4">
+          <Link
+            to="/register"
+            className="px-6 py-2.5 rounded-xl bg-primary text-primary-contrast font-medium text-sm hover:bg-primary-hover shadow-sm transition-all"
+          >
+            Create Free Account
+          </Link>
+          <Link
+            to="/login"
+            className="px-6 py-2.5 rounded-xl border border-border bg-surface text-text font-medium text-sm hover:bg-surface-muted transition-all"
+          >
+            Sign In to Library
+          </Link>
         </div>
       </div>
 
-      {/* Live System Health & Readiness */}
+      {/* Backend Health Probe Status */}
       <ApiHealthStatus />
 
-      {/* Architecture Highlights */}
-      <div id="architecture" className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold font-serif text-ink-900 dark:text-paper-50">
-            System Architecture
-          </h2>
-          <span className="text-xs text-ink-500 dark:text-paper-400">
-            Strict TypeScript Monorepo
-          </span>
-        </div>
-
+      {/* Architecture Highlights Grid */}
+      <div>
+        <h2 className="text-xl font-bold text-text mb-4">Architecture & Engineering Highlights</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {architectureHighlights.map((item) => {
-            const Icon = item.icon;
+          {architectureHighlights.map((h, i) => {
+            const Icon = h.icon;
             return (
-              <Card
-                key={item.title}
-                className="p-5 flex flex-col justify-between"
-                variant="elevated"
-              >
+              <Card key={i} className="p-5 flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                  <Icon className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2 rounded-lg bg-paper-100 dark:bg-paper-800 text-brand-600 dark:text-brand-400">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <Badge variant="neutral">{item.tag}</Badge>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-text text-sm">{h.title}</h3>
+                    <Badge variant="neutral">{h.tag}</Badge>
                   </div>
-                  <h3 className="font-semibold text-ink-900 dark:text-paper-100 text-sm">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-ink-600 dark:text-paper-400 mt-1.5 leading-relaxed">
-                    {item.description}
-                  </p>
+                  <p className="text-xs text-text-muted leading-relaxed">{h.description}</p>
                 </div>
               </Card>
             );
           })}
-        </div>
-      </div>
-
-      {/* Roadmap Tracker */}
-      <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold font-serif text-ink-900 dark:text-paper-50">
-            Phased Implementation Roadmap
-          </h2>
-          <Badge variant="success">Phase 1 Complete</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {roadmapPhases.map((phase) => (
-            <div
-              key={phase.num}
-              className={`p-4 rounded-xl border transition-all ${
-                phase.status === 'active'
-                  ? 'bg-brand-50/50 dark:bg-brand-950/20 border-brand-300 dark:border-brand-800 shadow-xs'
-                  : 'bg-paper-100/60 dark:bg-paper-900/60 border-paper-200 dark:border-paper-800/80 opacity-80'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-mono font-bold text-brand-600 dark:text-brand-400">
-                  Phase {phase.num}
-                </span>
-                {phase.status === 'active' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/80 text-brand-800 dark:text-brand-200">
-                    Active
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium text-ink-400 dark:text-paper-500">
-                    Next
-                  </span>
-                )}
-              </div>
-              <div className="font-semibold text-sm text-ink-900 dark:text-paper-100">
-                {phase.name}
-              </div>
-              <div className="text-xs text-ink-600 dark:text-paper-400 mt-1 leading-normal">
-                {phase.desc}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

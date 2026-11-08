@@ -80,4 +80,3 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
   });
 });
-

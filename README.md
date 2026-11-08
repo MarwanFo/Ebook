@@ -228,8 +228,8 @@ Validation failures return structured error details:
 ## 8. Phased Implementation Roadmap
 
 - [x] **Phase 1 — Foundation** (Monorepo, NestJS, React, Prisma, Health Probes, CI)
-- [ ] **Phase 2 — Authentication & Users**
-- [ ] **Phase 3 — Ebook Library & Storage**
+- [x] **Phase 2 — Authentication & Users** (Argon2id, Session Rotation, In-Memory JWT, CSRF Defense)
+- [x] **Phase 3 — Ebook Library & Storage** (Magic-byte Validation, EPUB/PDF Parsers, Storage Abstraction, Library UI)
 - [ ] **Phase 4 — EPUB Reader (EPUB.js, Two-page spreads, CFI)**
 - [ ] **Phase 5 — PDF Reader (PDF.js, Two-page spreads, Zoom)**
 - [ ] **Phase 6 — Bookmarks & Dashboard**

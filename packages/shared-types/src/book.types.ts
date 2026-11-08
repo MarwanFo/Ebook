@@ -51,3 +51,28 @@ export interface UpdateBookDto {
   isbn?: string;
   status?: BookStatus;
 }
+
+export interface BookQueryDto {
+  page?: number;
+  limit?: number;
+  search?: string;
+  format?: BookFormat;
+  status?: BookStatus;
+  sortBy?: 'createdAt' | 'updatedAt' | 'lastOpenedAt' | 'title' | 'author';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface BookUploadResponseDto {
+  book: BookDetailDto;
+  extractedMetadata: {
+    title: string;
+    author: string | null;
+    description: string | null;
+    language: string | null;
+    publisher: string | null;
+    publishedAt: string | null;
+    isbn: string | null;
+    pageCount?: number | null;
+    hasCover: boolean;
+  };
+}

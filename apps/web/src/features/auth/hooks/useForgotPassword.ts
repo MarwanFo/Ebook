@@ -8,4 +8,3 @@ export function useForgotPassword() {
     mutationFn: (dto) => authApi.forgotPassword(dto),
   });
 }
-
