@@ -11,6 +11,8 @@ import { PdfReaderHeader } from './PdfReaderHeader';
 import { PdfReaderFooter } from './PdfReaderFooter';
 import { PdfReaderTocSidebar, PdfOutlineItem } from './PdfReaderTocSidebar';
 import { PdfThumbnailsSidebar } from './PdfThumbnailsSidebar';
+import { BookmarksSidebar } from './BookmarksSidebar';
+import { useBookmarks } from '../hooks/useBookmarks';
 
 // Assign PDF.js worker URL
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -45,6 +47,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
   const { zoom, zoomMode, viewMode, theme, rotation } = usePdfStore();
 
   const { data: savedProgress, isLoading: isProgressLoading } = useReadingProgress(bookId);
+  const { data: bookmarks = [] } = useBookmarks(bookId);
   const updateProgressMutation = useUpdateProgress(bookId);
 
   const savedProgressRef = useRef(savedProgress);
@@ -63,6 +66,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
   // Overlays
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
+  const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Fullscreen Handler
@@ -384,9 +388,24 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
         totalPages={totalPages}
         onJumpToPage={goToPage}
         isTocOpen={isTocOpen}
-        onToggleToc={() => setIsTocOpen(!isTocOpen)}
+        onToggleToc={() => {
+          setIsTocOpen(!isTocOpen);
+          setIsThumbnailsOpen(false);
+          setIsBookmarksOpen(false);
+        }}
         isThumbnailsOpen={isThumbnailsOpen}
-        onToggleThumbnails={() => setIsThumbnailsOpen(!isThumbnailsOpen)}
+        onToggleThumbnails={() => {
+          setIsThumbnailsOpen(!isThumbnailsOpen);
+          setIsTocOpen(false);
+          setIsBookmarksOpen(false);
+        }}
+        isBookmarksOpen={isBookmarksOpen}
+        onToggleBookmarks={() => {
+          setIsBookmarksOpen(!isBookmarksOpen);
+          setIsTocOpen(false);
+          setIsThumbnailsOpen(false);
+        }}
+        bookmarkCount={bookmarks.length}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
       />
@@ -495,6 +514,25 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
         totalPages={totalPages}
         currentPage={currentPage}
         onSelectPage={goToPage}
+        theme={theme}
+      />
+
+      {/* Bookmarks & Annotations Drawer */}
+      <BookmarksSidebar
+        isOpen={isBookmarksOpen}
+        onClose={() => setIsBookmarksOpen(false)}
+        bookId={bookId}
+        bookTitle={bookTitle}
+        currentLocationType={LocationType.PDF_PAGE}
+        currentLocationValue={String(currentPage)}
+        currentProgressPercentage={totalPages > 0 ? (currentPage / totalPages) * 100 : 0}
+        currentLabel={`Page ${currentPage} of ${totalPages}`}
+        onJumpToLocation={(_locType, locValue) => {
+          const parsed = parseInt(locValue, 10);
+          if (!isNaN(parsed)) {
+            goToPage(parsed);
+          }
+        }}
         theme={theme}
       />
     </div>

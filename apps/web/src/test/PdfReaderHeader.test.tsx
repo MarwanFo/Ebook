@@ -103,4 +103,32 @@ describe('PdfReaderHeader', () => {
     fireEvent.click(screen.getByLabelText('Enter Fullscreen'));
     expect(handleToggleFullscreen).toHaveBeenCalledTimes(1);
   });
+
+  it('triggers onToggleBookmarks and shows count badge in PDF reader header', () => {
+    const handleToggleBookmarks = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <PdfReaderHeader
+          title="Clean Architecture"
+          currentPage={1}
+          totalPages={100}
+          onJumpToPage={vi.fn()}
+          isTocOpen={false}
+          onToggleToc={vi.fn()}
+          isThumbnailsOpen={false}
+          onToggleThumbnails={vi.fn()}
+          isBookmarksOpen={false}
+          onToggleBookmarks={handleToggleBookmarks}
+          bookmarkCount={3}
+          isFullscreen={false}
+          onToggleFullscreen={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('3')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Bookmarks and Notes'));
+    expect(handleToggleBookmarks).toHaveBeenCalledTimes(1);
+  });
 });

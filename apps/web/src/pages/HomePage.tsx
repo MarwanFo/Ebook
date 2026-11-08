@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, ShieldCheck, Database, Layers, Sparkles } from 'lucide-react';
+import {
+  BookOpen,
+  ShieldCheck,
+  Database,
+  Layers,
+  Sparkles,
+  Bookmark,
+  CheckCircle,
+  Clock,
+  Play,
+} from 'lucide-react';
 import { BookQueryDto, BookSummaryDto } from '@bookflow/shared-types';
 import { useAuthStore } from '../features/auth/stores/auth-store';
 import { useBooks } from '../features/books/hooks/useBooks';
 import { useDeleteBook } from '../features/books/hooks/useDeleteBook';
+import { useLibraryStats } from '../features/reading/hooks/useLibraryStats';
 import { LibraryFilters } from '../features/books/components/LibraryFilters';
 import { BookGrid } from '../features/books/components/BookGrid';
 import { UploadModal } from '../features/books/components/UploadModal';
@@ -31,7 +42,11 @@ export const HomePage: React.FC = () => {
   const { data: booksData, isLoading: isBooksLoading } = useBooks(
     isAuthenticated ? filters : { page: 1, limit: 1 },
   );
+  const { data: stats } = useLibraryStats();
   const deleteMutation = useDeleteBook();
+
+  const continueBook =
+    booksData?.data.find((b) => b.status === 'READING' || b.lastOpenedAt) || null;
 
   const handleFilterChange = (updated: Partial<BookQueryDto>) => {
     setFilters((prev) => ({ ...prev, ...updated }));
@@ -72,6 +87,72 @@ export const HomePage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Reading Dashboard Statistics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3.5 rounded-xl bg-surface border border-border shadow-xs">
+            <div className="flex items-center gap-2 text-text-muted text-xs font-medium">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span>Total Books</span>
+            </div>
+            <p className="text-xl font-bold text-text mt-1">
+              {stats?.totalBooks ?? booksData?.meta.pagination.total ?? 0}
+            </p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-surface border border-border shadow-xs">
+            <div className="flex items-center gap-2 text-text-muted text-xs font-medium">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span>Currently Reading</span>
+            </div>
+            <p className="text-xl font-bold text-text mt-1">{stats?.readingBooks ?? 0}</p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-surface border border-border shadow-xs">
+            <div className="flex items-center gap-2 text-text-muted text-xs font-medium">
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              <span>Completed</span>
+            </div>
+            <p className="text-xl font-bold text-text mt-1">{stats?.completedBooks ?? 0}</p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-surface border border-border shadow-xs">
+            <div className="flex items-center gap-2 text-text-muted text-xs font-medium">
+              <Bookmark className="w-4 h-4 text-indigo-500" />
+              <span>Saved Notes</span>
+            </div>
+            <p className="text-xl font-bold text-text mt-1">{stats?.totalBookmarks ?? 0}</p>
+          </div>
+        </div>
+
+        {/* Continue Reading Shelf */}
+        {continueBook && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-16 rounded-lg bg-surface border border-border shadow-xs flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase">
+                    {continueBook.format}
+                  </span>
+                  <span className="text-xs text-text-muted">Continue Reading</span>
+                </div>
+                <h3 className="text-sm font-bold text-text mt-0.5">{continueBook.title}</h3>
+                {continueBook.author && (
+                  <p className="text-xs text-text-muted">by {continueBook.author}</p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleReadBook(continueBook.id)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-primary-contrast text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Resume Reading</span>
+            </button>
+          </div>
+        )}
 
         {/* Filters and Controls */}
         <LibraryFilters

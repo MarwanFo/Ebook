@@ -56,4 +56,30 @@ describe('ReaderHeader', () => {
     fireEvent.click(screen.getByLabelText('Enter Fullscreen'));
     expect(handleToggleFullscreen).toHaveBeenCalledTimes(1);
   });
+
+  it('triggers onToggleBookmarks and displays bookmark count badge', () => {
+    const handleToggleBookmarks = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <ReaderHeader
+          title="Moby Dick"
+          theme="light"
+          isTocOpen={false}
+          onToggleToc={vi.fn()}
+          isBookmarksOpen={false}
+          onToggleBookmarks={handleToggleBookmarks}
+          bookmarkCount={5}
+          isSettingsOpen={false}
+          onToggleSettings={vi.fn()}
+          isFullscreen={false}
+          onToggleFullscreen={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('5')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Bookmarks and Notes'));
+    expect(handleToggleBookmarks).toHaveBeenCalledTimes(1);
+  });
 });

@@ -22,6 +22,7 @@ describe('Reading Progress Subsystem (e2e)', () => {
   const usersTable = new Map<string, any>();
   const booksTable = new Map<string, any>();
   const readingProgressTable = new Map<string, any>();
+  const bookmarksTable = new Map<string, any>();
 
   const inMemoryPrisma: any = {
     $connect: jest.fn().mockResolvedValue(undefined),
@@ -54,6 +55,64 @@ describe('Reading Progress Subsystem (e2e)', () => {
         const updated = { ...existing, ...data, updatedAt: new Date() };
         booksTable.set(where.id, updated);
         return updated;
+      }),
+      count: jest.fn(async ({ where }: any) => {
+        let count = 0;
+        for (const b of booksTable.values()) {
+          if (b.ownerId === where.ownerId) {
+            if (!where.status || b.status === where.status) {
+              count++;
+            }
+          }
+        }
+        return count;
+      }),
+    },
+
+    bookmark: {
+      findMany: jest.fn(async ({ where }: any) => {
+        const results: any[] = [];
+        for (const b of bookmarksTable.values()) {
+          if (b.userId === where.userId && b.bookId === where.bookId) {
+            results.push(b);
+          }
+        }
+        return results.sort((a, b) => a.progressPercentage - b.progressPercentage);
+      }),
+      findFirst: jest.fn(async ({ where }: any) => {
+        const b = bookmarksTable.get(where.id);
+        if (!b || b.userId !== where.userId) return null;
+        return b;
+      }),
+      create: jest.fn(async ({ data }: any) => {
+        const id = uuidv4();
+        const record = {
+          id,
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        bookmarksTable.set(id, record);
+        return record;
+      }),
+      update: jest.fn(async ({ where, data }: any) => {
+        const existing = bookmarksTable.get(where.id);
+        if (!existing) return null;
+        const updated = { ...existing, ...data, updatedAt: new Date() };
+        bookmarksTable.set(where.id, updated);
+        return updated;
+      }),
+      delete: jest.fn(async ({ where }: any) => {
+        const existing = bookmarksTable.get(where.id);
+        bookmarksTable.delete(where.id);
+        return existing;
+      }),
+      count: jest.fn(async ({ where }: any) => {
+        let count = 0;
+        for (const b of bookmarksTable.values()) {
+          if (b.userId === where.userId) count++;
+        }
+        return count;
       }),
     },
 
@@ -158,6 +217,7 @@ describe('Reading Progress Subsystem (e2e)', () => {
   beforeEach(() => {
     booksTable.clear();
     readingProgressTable.clear();
+    bookmarksTable.clear();
   });
 
   it('GET /reading/:bookId/progress requires authentication', async () => {
@@ -274,5 +334,138 @@ describe('Reading Progress Subsystem (e2e)', () => {
 
     const updatedBook = booksTable.get(bookId);
     expect(updatedBook.status).toBe('COMPLETED');
+  });
+
+  describe('Bookmarks & Annotations E2E', () => {
+    let bookId: string;
+
+    beforeEach(() => {
+      bookId = uuidv4();
+      booksTable.set(bookId, {
+        id: bookId,
+        ownerId: testUserId,
+        title: 'Bookmark Test Book',
+        format: 'EPUB',
+        status: 'READING',
+      });
+    });
+
+    it('POST /reading/:bookId/bookmarks creates a new bookmark and GET returns it', async () => {
+      const payload = {
+        locationType: 'EPUB_CFI',
+        locationValue: 'epubcfi(/6/14!/4)',
+        progressPercentage: 35.5,
+        title: 'Key Insight',
+        note: 'Important concept for later',
+      };
+
+      const createRes = await request(app.getHttpServer())
+        .post(`/api/v1/reading/${bookId}/bookmarks`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .send(payload)
+        .expect(201);
+
+      expect(createRes.body.data.id).toBeDefined();
+      expect(createRes.body.data.title).toBe('Key Insight');
+      expect(createRes.body.data.note).toBe('Important concept for later');
+      expect(createRes.body.data.progressPercentage).toBe(35.5);
+
+      const bookmarkId = createRes.body.data.id;
+
+      // GET bookmarks
+      const getRes = await request(app.getHttpServer())
+        .get(`/api/v1/reading/${bookId}/bookmarks`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .expect(200);
+
+      expect(getRes.body.data).toHaveLength(1);
+      expect(getRes.body.data[0].id).toBe(bookmarkId);
+
+      // PATCH bookmark
+      const patchRes = await request(app.getHttpServer())
+        .patch(`/api/v1/reading/bookmarks/${bookmarkId}`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .send({ title: 'Updated Title', note: 'Updated note' })
+        .expect(200);
+
+      expect(patchRes.body.data.title).toBe('Updated Title');
+      expect(patchRes.body.data.note).toBe('Updated note');
+
+      // DELETE bookmark
+      await request(app.getHttpServer())
+        .delete(`/api/v1/reading/bookmarks/${bookmarkId}`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .expect(204);
+
+      // Verify empty after deletion
+      const getAfterDelete = await request(app.getHttpServer())
+        .get(`/api/v1/reading/${bookId}/bookmarks`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .expect(200);
+
+      expect(getAfterDelete.body.data).toHaveLength(0);
+    });
+
+    it('prevents user from modifying or deleting another user bookmark', async () => {
+      const payload = {
+        locationType: 'EPUB_CFI',
+        locationValue: 'epubcfi(/6/14!/4)',
+        progressPercentage: 10.0,
+        title: 'User 1 Note',
+      };
+
+      const createRes = await request(app.getHttpServer())
+        .post(`/api/v1/reading/${bookId}/bookmarks`)
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .send(payload)
+        .expect(201);
+
+      const bookmarkId = createRes.body.data.id;
+
+      // Other user tries to update
+      await request(app.getHttpServer())
+        .patch(`/api/v1/reading/bookmarks/${bookmarkId}`)
+        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .send({ title: 'Hacked Title' })
+        .expect(404);
+
+      // Other user tries to delete
+      await request(app.getHttpServer())
+        .delete(`/api/v1/reading/bookmarks/${bookmarkId}`)
+        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .expect(404);
+    });
+  });
+
+  describe('Library Stats E2E', () => {
+    it('GET /reading/stats returns aggregate book counts and bookmark total', async () => {
+      // Add books for test user
+      const b1 = uuidv4();
+      const b2 = uuidv4();
+      const b3 = uuidv4();
+      booksTable.set(b1, { id: b1, ownerId: testUserId, status: 'READING' });
+      booksTable.set(b2, { id: b2, ownerId: testUserId, status: 'COMPLETED' });
+      booksTable.set(b3, { id: b3, ownerId: testUserId, status: 'UNREAD' });
+
+      // Add a bookmark for test user
+      const bmkId = uuidv4();
+      bookmarksTable.set(bmkId, {
+        id: bmkId,
+        userId: testUserId,
+        bookId: b1,
+        progressPercentage: 20,
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/reading/stats')
+        .set('Authorization', `Bearer ${testAccessToken}`)
+        .expect(200);
+
+      expect(res.body.data.totalBooks).toBe(3);
+      expect(res.body.data.readingBooks).toBe(1);
+      expect(res.body.data.completedBooks).toBe(1);
+      expect(res.body.data.unreadBooks).toBe(1);
+      expect(res.body.data.totalBookmarks).toBe(1);
+    });
   });
 });

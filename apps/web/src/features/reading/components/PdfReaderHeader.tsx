@@ -15,6 +15,7 @@ import {
   Sun,
   Moon,
   Coffee,
+  Bookmark,
 } from 'lucide-react';
 import { usePdfStore, PdfTheme } from '../stores/pdf-store';
 
@@ -28,6 +29,9 @@ interface PdfReaderHeaderProps {
   onToggleToc: () => void;
   isThumbnailsOpen: boolean;
   onToggleThumbnails: () => void;
+  isBookmarksOpen?: boolean;
+  onToggleBookmarks?: () => void;
+  bookmarkCount?: number;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
 }
@@ -42,6 +46,9 @@ export const PdfReaderHeader: React.FC<PdfReaderHeaderProps> = ({
   onToggleToc,
   isThumbnailsOpen,
   onToggleThumbnails,
+  isBookmarksOpen = false,
+  onToggleBookmarks,
+  bookmarkCount = 0,
   isFullscreen,
   onToggleFullscreen,
 }) => {
@@ -248,6 +255,26 @@ export const PdfReaderHeader: React.FC<PdfReaderHeaderProps> = ({
         >
           <List className="w-4 h-4" />
         </button>
+
+        {/* Bookmarks & Notes Toggle */}
+        {onToggleBookmarks && (
+          <button
+            type="button"
+            onClick={onToggleBookmarks}
+            className={`p-1.5 rounded-lg transition-colors relative ${
+              isBookmarksOpen ? activeBtnClasses : buttonHoverClasses
+            }`}
+            title="Bookmarks and Notes"
+            aria-label="Bookmarks and Notes"
+          >
+            <Bookmark className="w-4 h-4" />
+            {bookmarkCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 px-1 min-w-[14px] h-3.5 rounded-full bg-amber-500 text-[9px] font-bold text-white flex items-center justify-center">
+                {bookmarkCount > 99 ? '99+' : bookmarkCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Palette Selector */}
         <button

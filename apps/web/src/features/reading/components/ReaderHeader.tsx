@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, List, Sliders, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, List, Sliders, Maximize2, Minimize2, Bookmark } from 'lucide-react';
 import { ReaderTheme } from '../stores/reader-store';
 
 interface ReaderHeaderProps {
@@ -10,6 +10,9 @@ interface ReaderHeaderProps {
   theme: ReaderTheme;
   isTocOpen: boolean;
   onToggleToc: () => void;
+  isBookmarksOpen?: boolean;
+  onToggleBookmarks?: () => void;
+  bookmarkCount?: number;
   isSettingsOpen: boolean;
   onToggleSettings: () => void;
   isFullscreen: boolean;
@@ -23,6 +26,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   theme,
   isTocOpen,
   onToggleToc,
+  isBookmarksOpen = false,
+  onToggleBookmarks,
+  bookmarkCount = 0,
   isSettingsOpen,
   onToggleSettings,
   isFullscreen,
@@ -97,6 +103,26 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
         >
           <List className="w-4 h-4" />
         </button>
+
+        {/* Bookmarks & Notes Button */}
+        {onToggleBookmarks && (
+          <button
+            type="button"
+            onClick={onToggleBookmarks}
+            className={`p-2 rounded-lg transition-colors relative ${
+              isBookmarksOpen ? activeBtnClasses : buttonHoverClasses
+            }`}
+            title="Bookmarks and Notes"
+            aria-label="Bookmarks and Notes"
+          >
+            <Bookmark className="w-4 h-4" />
+            {bookmarkCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 px-1 min-w-[14px] h-3.5 rounded-full bg-amber-500 text-[9px] font-bold text-white flex items-center justify-center">
+                {bookmarkCount > 99 ? '99+' : bookmarkCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Reader Typography & Layout Settings Button */}
         <button

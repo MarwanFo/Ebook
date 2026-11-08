@@ -57,3 +57,11 @@ export interface UpdateBookmarkDto {
   title?: string;
   note?: string;
 }
+
+export interface LibraryStatsDto {
+  totalBooks: number;
+  readingBooks: number;
+  completedBooks: number;
+  unreadBooks: number;
+  totalBookmarks: number;
+}

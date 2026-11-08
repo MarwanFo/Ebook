@@ -33,6 +33,19 @@ describe('ReadingService', () => {
     updatedAt: new Date('2026-02-01'),
   };
 
+  const mockDbBookmark = {
+    id: 'bmk-uuid-1',
+    userId: mockUserId,
+    bookId: mockBookId,
+    locationType: PrismaLocationType.EPUB_CFI,
+    locationValue: 'epubcfi(/6/12!/4)',
+    progressPercentage: 33.0,
+    title: 'Interesting quote',
+    note: 'Remember to check reference',
+    createdAt: new Date('2026-02-01'),
+    updatedAt: new Date('2026-02-01'),
+  };
+
   beforeEach(async () => {
     mockPrisma = {
       $transaction: jest.fn(async (cb: any) => {
@@ -42,10 +55,19 @@ describe('ReadingService', () => {
       book: {
         findFirst: jest.fn().mockResolvedValue(mockDbBook),
         update: jest.fn().mockResolvedValue(mockDbBook),
+        count: jest.fn().mockResolvedValue(10),
       },
       readingProgress: {
         findUnique: jest.fn().mockResolvedValue(mockDbProgress),
         upsert: jest.fn().mockResolvedValue(mockDbProgress),
+      },
+      bookmark: {
+        findMany: jest.fn().mockResolvedValue([mockDbBookmark]),
+        findFirst: jest.fn().mockResolvedValue(mockDbBookmark),
+        create: jest.fn().mockResolvedValue(mockDbBookmark),
+        update: jest.fn().mockResolvedValue({ ...mockDbBookmark, title: 'Updated' }),
+        delete: jest.fn().mockResolvedValue(mockDbBookmark),
+        count: jest.fn().mockResolvedValue(4),
       },
     };
 
@@ -124,6 +146,114 @@ describe('ReadingService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('getBookmarks', () => {
+    it('should return bookmarks sorted by progress percentage', async () => {
+      const result = await service.getBookmarks(mockUserId, mockBookId);
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe('bmk-uuid-1');
+      expect(result[0]?.locationValue).toBe('epubcfi(/6/12!/4)');
+      expect(result[0]?.title).toBe('Interesting quote');
+    });
+
+    it('should throw NotFoundException if book does not exist or user does not own it', async () => {
+      mockPrisma.book.findFirst.mockResolvedValueOnce(null);
+      await expect(service.getBookmarks(mockUserId, 'invalid-book')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('createBookmark', () => {
+    it('should create a new bookmark record and return serialized DTO', async () => {
+      const payload = {
+        locationType: LocationType.EPUB_CFI,
+        locationValue: 'epubcfi(/6/12!/4)',
+        progressPercentage: 33.0,
+        title: 'New Bookmark',
+        note: 'Some notes',
+      };
+      const result = await service.createBookmark(mockUserId, mockBookId, payload);
+      expect(result.id).toBe('bmk-uuid-1');
+      expect(mockPrisma.bookmark.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: mockUserId,
+            bookId: mockBookId,
+            locationValue: 'epubcfi(/6/12!/4)',
+            title: 'New Bookmark',
+          }),
+        }),
+      );
+    });
+
+    it('should throw NotFoundException if book not found on create', async () => {
+      mockPrisma.book.findFirst.mockResolvedValueOnce(null);
+      await expect(
+        service.createBookmark(mockUserId, 'missing', {
+          locationType: LocationType.EPUB_CFI,
+          locationValue: 'cfi',
+          progressPercentage: 10,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateBookmark', () => {
+    it('should update bookmark title and note', async () => {
+      const result = await service.updateBookmark(mockUserId, 'bmk-uuid-1', {
+        title: 'Updated',
+      });
+      expect(result.title).toBe('Updated');
+      expect(mockPrisma.bookmark.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'bmk-uuid-1' },
+          data: expect.objectContaining({ title: 'Updated' }),
+        }),
+      );
+    });
+
+    it('should throw NotFoundException if bookmark not found or belongs to another user', async () => {
+      mockPrisma.bookmark.findFirst.mockResolvedValueOnce(null);
+      await expect(
+        service.updateBookmark(mockUserId, 'missing-bmk', { title: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('deleteBookmark', () => {
+    it('should delete bookmark from database', async () => {
+      await service.deleteBookmark(mockUserId, 'bmk-uuid-1');
+      expect(mockPrisma.bookmark.delete).toHaveBeenCalledWith({
+        where: { id: 'bmk-uuid-1' },
+      });
+    });
+
+    it('should throw NotFoundException if bookmark not found', async () => {
+      mockPrisma.bookmark.findFirst.mockResolvedValueOnce(null);
+      await expect(service.deleteBookmark(mockUserId, 'missing-bmk')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('getLibraryStats', () => {
+    it('should return library counts and bookmark counts', async () => {
+      mockPrisma.book.count
+        .mockResolvedValueOnce(12) // total
+        .mockResolvedValueOnce(3) // reading
+        .mockResolvedValueOnce(4) // completed
+        .mockResolvedValueOnce(5); // unread
+      mockPrisma.bookmark.count.mockResolvedValueOnce(8);
+
+      const stats = await service.getLibraryStats(mockUserId);
+      expect(stats.totalBooks).toBe(12);
+      expect(stats.readingBooks).toBe(3);
+      expect(stats.completedBooks).toBe(4);
+      expect(stats.unreadBooks).toBe(5);
+      expect(stats.totalBookmarks).toBe(8);
     });
   });
 });

@@ -10,6 +10,8 @@ import { ReaderHeader } from './ReaderHeader';
 import { ReaderFooter } from './ReaderFooter';
 import { ReaderTocSidebar } from './ReaderTocSidebar';
 import { ReaderSettingsModal } from './ReaderSettingsModal';
+import { BookmarksSidebar } from './BookmarksSidebar';
+import { useBookmarks } from '../hooks/useBookmarks';
 
 const ePub = (
   typeof ePubLibrary === 'function'
@@ -34,6 +36,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
   // Backend Sync
   const { data: savedProgress, isLoading: isProgressLoading } = useReadingProgress(bookId);
+  const { data: bookmarks = [] } = useBookmarks(bookId);
   const updateProgressMutation = useUpdateProgress(bookId);
 
   // Reader Local State
@@ -49,7 +52,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   // Overlay Panels
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handleJumpToLocation = useCallback((_locType: LocationType, locValue: string) => {
+    if (renditionRef.current) {
+      renditionRef.current.display(locValue);
+    }
+  }, []);
 
   // Fullscreen Handler
   const handleToggleFullscreen = useCallback(() => {
@@ -325,6 +335,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           }
         });
 
+        // Capture text selection CFI for instant bookmarking/annotation
+        rendition.on('selected', (cfiRange: string) => {
+          if (!isCancelled && cfiRange) {
+            setCurrentCfi(cfiRange);
+          }
+        });
+
         // Bind keyboard navigation inside EPUB iframe
         rendition.on('keydown', (e: KeyboardEvent) => {
           if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
@@ -402,9 +419,24 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         chapterTitle={currentChapter}
         theme={theme}
         isTocOpen={isTocOpen}
-        onToggleToc={() => setIsTocOpen(!isTocOpen)}
+        onToggleToc={() => {
+          setIsTocOpen(!isTocOpen);
+          setIsSettingsOpen(false);
+          setIsBookmarksOpen(false);
+        }}
+        isBookmarksOpen={isBookmarksOpen}
+        onToggleBookmarks={() => {
+          setIsBookmarksOpen(!isBookmarksOpen);
+          setIsTocOpen(false);
+          setIsSettingsOpen(false);
+        }}
+        bookmarkCount={bookmarks.length}
         isSettingsOpen={isSettingsOpen}
-        onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
+        onToggleSettings={() => {
+          setIsSettingsOpen(!isSettingsOpen);
+          setIsTocOpen(false);
+          setIsBookmarksOpen(false);
+        }}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
       />
@@ -491,6 +523,20 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         toc={toc}
         currentHref={currentCfi}
         onSelectChapter={handleSelectChapter}
+        theme={theme}
+      />
+
+      {/* Bookmarks & Annotations Drawer */}
+      <BookmarksSidebar
+        isOpen={isBookmarksOpen}
+        onClose={() => setIsBookmarksOpen(false)}
+        bookId={bookId}
+        bookTitle={bookTitle}
+        currentLocationType={LocationType.EPUB_CFI}
+        currentLocationValue={currentCfi}
+        currentProgressPercentage={progressPercentage}
+        currentLabel={currentChapter || `Page ${currentPage || ''}`}
+        onJumpToLocation={handleJumpToLocation}
         theme={theme}
       />
 

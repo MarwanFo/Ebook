@@ -230,7 +230,7 @@ Validation failures return structured error details:
 - [x] **Phase 1 — Foundation** (Monorepo, NestJS, React, Prisma, Health Probes, CI)
 - [x] **Phase 2 — Authentication & Users** (Argon2id, Session Rotation, In-Memory JWT, CSRF Defense)
 - [x] **Phase 3 — Ebook Library & Storage** (Magic-byte Validation, EPUB/PDF Parsers, Storage Abstraction, Library UI)
-- [ ] **Phase 4 — EPUB Reader (EPUB.js, Two-page spreads, CFI)**
-- [ ] **Phase 5 — PDF Reader (PDF.js, Two-page spreads, Zoom)**
-- [ ] **Phase 6 — Bookmarks & Dashboard**
+- [x] **Phase 4 — EPUB Reader (EPUB.js, Two-page spreads, CFI)**
+- [x] **Phase 5 — PDF Reader (PDF.js, Two-page spreads, Zoom)**
+- [x] **Phase 6 — Bookmarks & Dashboard**
 - [ ] **Phase 7 — Hardening, E2E & Production Packaging**
