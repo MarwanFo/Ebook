@@ -233,4 +233,29 @@ Validation failures return structured error details:
 - [x] **Phase 4 — EPUB Reader (EPUB.js, Two-page spreads, CFI)**
 - [x] **Phase 5 — PDF Reader (PDF.js, Two-page spreads, Zoom)**
 - [x] **Phase 6 — Bookmarks & Dashboard**
-- [ ] **Phase 7 — Hardening, E2E & Production Packaging**
+- [x] **Phase 7 — Hardening, E2E & Production Packaging**
+
+---
+
+## 9. Production Deployment with Docker Compose
+
+BookFlow includes production-ready multi-stage Dockerfiles and an orchestrated `docker-compose.prod.yml`:
+
+```bash
+# 1. Configure production environment variables in .env
+DATABASE_URL=postgresql://bookflow:secure_password@postgres:5432/bookflow_prod?schema=public
+JWT_ACCESS_SECRET=your_32_character_jwt_access_secret_here
+JWT_REFRESH_SECRET=your_32_character_jwt_refresh_secret_here
+CORS_ORIGIN=http://yourdomain.com
+
+# 2. Build and start production containers
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 3. Apply Prisma migrations in the production container
+docker compose -f docker-compose.prod.yml exec api pnpm db:migrate:deploy
+
+# 4. Access BookFlow
+# Frontend: http://localhost (Port 80)
+# Backend API: http://localhost:3000/api/v1
+# Swagger Documentation: http://localhost:3000/api/docs
+```

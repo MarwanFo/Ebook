@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16.8-alpine3.21
+    container_name: bookflow-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bookflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bookflow_prod_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bookflow_prod}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-bookflow} -d ${POSTGRES_DB:-bookflow_prod}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bookflow-api-prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bookflow}:${POSTGRES_PASSWORD:-bookflow_prod_secure_password}@postgres:5432/${POSTGRES_DB:-bookflow_prod}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-prod-access-secret-minimum-32-characters-required-for-security}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-prod-refresh-secret-minimum-32-characters-required-for-security}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_BASE_DIR: /app/storage
+    volumes:
+      - bookflow_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: bookflow-web-prod
+    restart: always
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '80:80'
+
+volumes:
+  postgres_prod_data:
+    name: bookflow_postgres_prod_data
+    driver: local
+  bookflow_storage:
+    name: bookflow_storage_prod
+    driver: local
