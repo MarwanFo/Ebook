@@ -1,7 +1,7 @@
 import { UserRole } from './enums';
 
 /**
- * Public User Data Transfer Object (safe for clients).
+ * Public User Profile DTO (Zero sensitive data, safe for frontend).
  */
 export interface UserProfileDto {
   id: string;
@@ -22,10 +22,14 @@ export interface AuthSessionDto {
   accessToken: string;
 }
 
+export interface MessageResponseDto {
+  message: string;
+}
+
 export interface RegisterDto {
   email: string;
   password: string;
-  displayName: string;
+  displayName?: string;
 }
 
 export interface LoginDto {

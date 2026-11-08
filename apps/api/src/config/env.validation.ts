@@ -40,7 +40,51 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  REFRESH_TOKEN_EXPIRES_IN: string = '30d';
+  JWT_ISSUER: string = 'bookflow-api';
+
+  @IsString()
+  @IsOptional()
+  JWT_AUDIENCE: string = 'bookflow-client';
+
+  @IsString()
+  @IsOptional()
+  REFRESH_COOKIE_NAME: string = 'bookflow_refresh';
+
+  @IsNumber()
+  @IsOptional()
+  REFRESH_EXPIRATION_DAYS: number = 7;
+
+  @IsString()
+  @IsOptional()
+  SMTP_HOST: string = 'localhost';
+
+  @IsNumber()
+  @IsOptional()
+  SMTP_PORT: number = 1025;
+
+  @IsString()
+  @IsOptional()
+  SMTP_USER?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_PASSWORD?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_FROM: string = 'BookFlow <noreply@bookflow.local>';
+
+  @IsNumber()
+  @IsOptional()
+  RATE_LIMIT_LOGIN_PER_MIN: number = 10;
+
+  @IsNumber()
+  @IsOptional()
+  RATE_LIMIT_REGISTER_PER_MIN: number = 5;
+
+  @IsNumber()
+  @IsOptional()
+  RATE_LIMIT_FORGOT_PW_PER_MIN: number = 5;
 
   @IsEnum(StorageDriver)
   @IsOptional()

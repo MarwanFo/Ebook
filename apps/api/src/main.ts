@@ -2,6 +2,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -12,8 +13,17 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
-  const webOrigin = configService.get<string>('WEB_ORIGIN', 'http://localhost:5173');
+  const port = configService.get<number>('port', 3000);
+  const webOrigin = configService.get<string>('cors.origin', 'http://localhost:5173');
+
+  // Trust first proxy hop in production deployment
+  const expressApp = app.getHttpAdapter().getInstance();
+  if (typeof expressApp.set === 'function') {
+    expressApp.set('trust proxy', 1);
+  }
+
+  // Cookie parser middleware
+  app.use(cookieParser());
 
   // CORS configuration
   app.enableCors({
@@ -63,6 +73,7 @@ async function bootstrap() {
       'JWT-auth',
     )
     .addTag('Operations', 'Health and readiness monitoring')
+    .addTag('auth', 'Authentication and session management')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

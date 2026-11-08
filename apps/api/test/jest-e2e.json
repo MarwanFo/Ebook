@@ -7,6 +7,7 @@
   },
   "testEnvironment": "node",
   "moduleNameMapper": {
-    "^@/(.*)$": "<rootDir>/../src/$1"
+    "^@/(.*)$": "<rootDir>/../src/$1",
+    "^@bookflow/shared-types$": "<rootDir>/../../../packages/shared-types/src/index.ts"
   }
 }

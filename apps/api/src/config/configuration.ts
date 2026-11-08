@@ -10,7 +10,26 @@ export default () => ({
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
-    refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d',
+    issuer: process.env.JWT_ISSUER || 'bookflow-api',
+    audience: process.env.JWT_AUDIENCE || 'bookflow-client',
+  },
+  cookie: {
+    refreshCookieName:
+      process.env.REFRESH_COOKIE_NAME ||
+      (process.env.NODE_ENV === 'production' ? '__Host-bookflow_refresh' : 'bookflow_refresh'),
+    refreshExpirationDays: parseInt(process.env.REFRESH_EXPIRATION_DAYS || '7', 10),
+  },
+  smtp: {
+    host: process.env.SMTP_HOST || 'localhost',
+    port: parseInt(process.env.SMTP_PORT || '1025', 10),
+    user: process.env.SMTP_USER,
+    password: process.env.SMTP_PASSWORD,
+    from: process.env.SMTP_FROM || 'BookFlow <noreply@bookflow.local>',
+  },
+  throttler: {
+    loginPerMin: parseInt(process.env.RATE_LIMIT_LOGIN_PER_MIN || '10', 10),
+    registerPerMin: parseInt(process.env.RATE_LIMIT_REGISTER_PER_MIN || '5', 10),
+    forgotPwPerMin: parseInt(process.env.RATE_LIMIT_FORGOT_PW_PER_MIN || '5', 10),
   },
   storage: {
     driver: process.env.STORAGE_DRIVER || 'local',

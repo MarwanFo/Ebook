@@ -2,12 +2,14 @@ import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HealthCheckResponse, ReadinessCheckResponse } from '@bookflow/shared-types';
 import { PrismaService } from '../database/prisma.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Operations')
 @Controller()
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @Public()
   @Get('health')
   @ApiOperation({
     summary: 'Liveness probe',
@@ -35,6 +37,7 @@ export class HealthController {
     };
   }
 
+  @Public()
   @Get('ready')
   @ApiOperation({
     summary: 'Readiness probe',

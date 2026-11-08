@@ -1,11 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Moon, Sun, Coffee, Menu, X } from 'lucide-react';
+import { BookOpen, Moon, Sun, Coffee, Menu, X, User, LogOut } from 'lucide-react';
 import { ReaderTheme } from '@bookflow/shared-types';
 import { useUIStore } from '../../stores/ui-store';
+import { useAuth } from '../../features/auth/hooks/useAuth';
+import { useLogout } from '../../features/auth/hooks/useLogout';
 
 export const Header: React.FC = () => {
   const { theme, setTheme, isSidebarOpen, toggleSidebar } = useUIStore();
+  const { user, isAuthenticated } = useAuth();
+  const logoutMutation = useLogout();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-paper-200 dark:border-paper-800 bg-paper-50/90 dark:bg-paper-950/90 backdrop-blur-md transition-colors">
@@ -53,8 +57,44 @@ export const Header: React.FC = () => {
           </a>
         </nav>
 
-        {/* Theme Switcher */}
-        <div className="flex items-center gap-2">
+        {/* Auth State & Theme Switcher */}
+        <div className="flex items-center gap-3">
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/profile"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-200 dark:hover:bg-paper-800 transition-colors border border-paper-200 dark:border-paper-700"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span className="max-w-[120px] truncate">{user.displayName || user.email}</span>
+              </Link>
+              <button
+                onClick={() => logoutMutation.mutate()}
+                title="Sign Out"
+                disabled={logoutMutation.isPending}
+                className="p-1.5 rounded-lg text-ink-600 hover:text-red-600 hover:bg-red-50 dark:text-paper-400 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                to="/login"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-500 hover:bg-brand-600 text-white shadow-xs transition-colors"
+              >
+                Register
+              </Link>
+            </div>
+          )}
+
+          {/* Theme Switcher */}
           <div className="flex items-center p-1 rounded-xl bg-paper-200/80 dark:bg-paper-800/80 border border-paper-300 dark:border-paper-700">
             <button
               onClick={() => setTheme(ReaderTheme.LIGHT)}

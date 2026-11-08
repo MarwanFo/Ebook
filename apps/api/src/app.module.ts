@@ -1,9 +1,15 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { validate } from './config/env.validation';
 import { PrismaModule } from './database/prisma.module';
 import { HealthModule } from './health/health.module';
+import { UsersModule } from './users/users.module';
+import { MailModule } from './mail/mail.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Module({
@@ -16,6 +22,19 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     }),
     PrismaModule,
     HealthModule,
+    UsersModule,
+    MailModule,
+    AuthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule implements NestModule {

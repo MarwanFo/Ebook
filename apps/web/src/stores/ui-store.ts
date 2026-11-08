@@ -11,9 +11,16 @@ interface UIState {
 
 const getInitialTheme = (): ReaderTheme => {
   if (typeof window === 'undefined') return ReaderTheme.LIGHT;
-  const saved = localStorage.getItem('bookflow-theme') as ReaderTheme | null;
-  if (saved && Object.values(ReaderTheme).includes(saved)) {
-    return saved;
+  try {
+    const saved =
+      typeof localStorage !== 'undefined'
+        ? (localStorage.getItem('bookflow-theme') as ReaderTheme | null)
+        : null;
+    if (saved && Object.values(ReaderTheme).includes(saved)) {
+      return saved;
+    }
+  } catch {
+    // Ignore storage errors in test or restricted environments
   }
   if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     return ReaderTheme.DARK;
@@ -40,7 +47,13 @@ export const useUIStore = create<UIState>((set) => {
     theme: initialTheme,
     isSidebarOpen: false,
     setTheme: (theme: ReaderTheme) => {
-      localStorage.setItem('bookflow-theme', theme);
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('bookflow-theme', theme);
+        }
+      } catch {
+        // Ignore storage errors in test or restricted environments
+      }
       applyThemeClass(theme);
       set({ theme });
     },

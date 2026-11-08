@@ -9,6 +9,7 @@
   "coverageDirectory": "../coverage",
   "testEnvironment": "node",
   "moduleNameMapper": {
-    "^@/(.*)$": "<rootDir>/$1"
+    "^@/(.*)$": "<rootDir>/$1",
+    "^@bookflow/shared-types$": "<rootDir>/../../../packages/shared-types/src/index.ts"
   }
 }
