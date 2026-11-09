@@ -59,8 +59,14 @@ async function rawRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     });
   }
 
-  if (responseData && typeof responseData === 'object' && 'data' in responseData) {
-    return (responseData as ApiResponse<T>).data;
+  if (responseData && typeof responseData === 'object') {
+    // If the response is already enveloped with both data and meta (e.g. PaginatedResponse), preserve envelope
+    if ('data' in responseData && 'meta' in responseData) {
+      return responseData as T;
+    }
+    if ('data' in responseData) {
+      return (responseData as ApiResponse<T>).data;
+    }
   }
 
   return responseData as T;

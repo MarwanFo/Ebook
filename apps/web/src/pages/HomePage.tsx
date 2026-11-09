@@ -35,8 +35,19 @@ export const HomePage: React.FC = () => {
   const { data: stats } = useLibraryStats();
   const deleteMutation = useDeleteBook();
 
-  const continueBook =
-    booksData?.data.find((b) => b.status === 'READING' || b.lastOpenedAt) || null;
+  // Safely extract books array and pagination metadata regardless of envelope shape
+  const booksList: BookSummaryDto[] = Array.isArray(booksData)
+    ? booksData
+    : Array.isArray(booksData?.data)
+      ? booksData.data
+      : [];
+
+  const paginationMeta =
+    booksData && !Array.isArray(booksData) && 'meta' in booksData && booksData.meta?.pagination
+      ? booksData.meta.pagination
+      : undefined;
+
+  const continueBook = booksList.find((b) => b.status === 'READING' || b.lastOpenedAt) || null;
 
   const handleFilterChange = (updated: Partial<BookQueryDto>) => {
     setFilters((prev) => ({ ...prev, ...updated }));
@@ -73,7 +84,7 @@ export const HomePage: React.FC = () => {
           </div>
           <div className="mt-3 md:mt-0 flex items-center gap-2">
             <span className="text-xs text-text-muted bg-surface-muted px-3 py-1.5 rounded-lg border border-border">
-              {booksData?.meta.pagination.total ?? 0} books in library
+              {paginationMeta?.total ?? booksList.length} books in library
             </span>
           </div>
         </div>
@@ -86,7 +97,7 @@ export const HomePage: React.FC = () => {
               <span>Total Books</span>
             </div>
             <p className="text-xl font-bold text-text mt-1">
-              {stats?.totalBooks ?? booksData?.meta.pagination.total ?? 0}
+              {stats?.totalBooks ?? paginationMeta?.total ?? booksList.length}
             </p>
           </div>
           <div className="p-3.5 rounded-xl bg-surface border border-border shadow-xs">
@@ -153,9 +164,9 @@ export const HomePage: React.FC = () => {
 
         {/* Books Grid */}
         <BookGrid
-          books={booksData?.data || []}
+          books={booksList}
           isLoading={isBooksLoading}
-          pagination={booksData?.meta.pagination}
+          pagination={paginationMeta}
           onPageChange={(page) => handleFilterChange({ page })}
           onSelectBook={(book) => setSelectedBook(book)}
           onDeleteBook={handleDeleteBook}
