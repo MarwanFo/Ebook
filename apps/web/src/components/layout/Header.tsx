@@ -45,8 +45,16 @@ export const Header: React.FC = () => {
             to="/"
             className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
           >
-            Overview
+            {isAuthenticated ? 'Library' : 'Overview'}
           </Link>
+          {isAuthenticated && (
+            <Link
+              to="/profile"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
+            >
+              Settings
+            </Link>
+          )}
           <a
             href="http://localhost:3000/api/docs"
             target="_blank"

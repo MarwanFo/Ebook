@@ -24,6 +24,7 @@
     "db:validate": "pnpm --filter @bookflow/api db:validate",
     "db:migrate": "pnpm --filter @bookflow/api db:migrate",
     "db:migrate:deploy": "pnpm --filter @bookflow/api db:migrate:deploy",
+    "db:seed": "pnpm --filter @bookflow/api db:seed",
     "db:studio": "pnpm --filter @bookflow/api db:studio"
   },
   "devDependencies": {

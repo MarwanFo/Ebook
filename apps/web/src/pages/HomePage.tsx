@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  BookOpen,
-  ShieldCheck,
-  Database,
-  Layers,
-  Sparkles,
-  Bookmark,
-  CheckCircle,
-  Clock,
-  Play,
-} from 'lucide-react';
+import { BookOpen, ShieldCheck, Database, Bookmark, CheckCircle, Clock, Play } from 'lucide-react';
 import { BookQueryDto, BookSummaryDto } from '@bookflow/shared-types';
 import { useAuthStore } from '../features/auth/stores/auth-store';
 import { useBooks } from '../features/books/hooks/useBooks';
@@ -195,30 +185,30 @@ export const HomePage: React.FC = () => {
   // Guest Landing View
   const architectureHighlights = [
     {
-      title: 'NestJS + Prisma API',
+      title: 'Dual Reader Engines (EPUB & PDF)',
       description:
-        'Robust REST backend with modular architecture, strict environment validation, request-ID tracking, and PostgreSQL models.',
+        'Custom EPUB.js and PDF.js engines with two-page facing spreads, continuous scroll, and cross-device reading progress synchronization.',
+      icon: BookOpen,
+      tag: 'Reader',
+    },
+    {
+      title: 'Bookmarks & Rich Annotations',
+      description:
+        'Highlight text with 5 semantic colors, attach rich markdown notes, organize with tags, and navigate seamlessly via sidebar.',
+      icon: Bookmark,
+      tag: 'Features',
+    },
+    {
+      title: 'NestJS + Prisma + PostgreSQL',
+      description:
+        'Modular REST API with Argon2id authentication, JWT rotation, request-ID tracing, metadata extraction, and streaming range requests.',
       icon: Database,
       tag: 'Backend',
     },
     {
-      title: 'React + Vite + Tailwind',
+      title: 'Hardened Security & Production Packaging',
       description:
-        'Modern client with warm book aesthetics, light/sepia/dark themes, TanStack Query server caching, and Zustand UI state.',
-      icon: Sparkles,
-      tag: 'Frontend',
-    },
-    {
-      title: 'Shared TypeScript Contracts',
-      description:
-        'Zero-duplication API envelopes, public DTOs, and domain enums shared between client and server without exposing internal models.',
-      icon: Layers,
-      tag: 'Packages',
-    },
-    {
-      title: 'Docker & PostgreSQL 16',
-      description:
-        'Containerized database infrastructure with automated health probes and persistent storage volume mappings.',
+        'Defensive Helmet headers, global Throttler rate limiting, multi-stage Dockerfiles, and Nginx reverse proxy orchestration.',
       icon: ShieldCheck,
       tag: 'DevOps',
     },

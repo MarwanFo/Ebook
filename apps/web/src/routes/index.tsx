@@ -18,6 +18,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/" element={<MainLayout />}>
         {/* Public home route */}
         <Route index element={<HomePage />} />
+        <Route path="library" element={<HomePage />} />
 
         {/* Guest / Public-only routes */}
         <Route
@@ -56,6 +57,14 @@ export const AppRoutes: React.FC = () => {
         {/* Protected routes */}
         <Route
           path="profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="settings"
           element={
             <ProtectedRoute>
               <ProfilePage />
