@@ -16,6 +16,7 @@ import {
   Moon,
   Coffee,
   Bookmark,
+  BookOpen,
 } from 'lucide-react';
 import { usePdfStore, PdfTheme } from '../stores/pdf-store';
 
@@ -216,6 +217,17 @@ export const PdfReaderHeader: React.FC<PdfReaderHeaderProps> = ({
             aria-label="Continuous Scroll Mode"
           >
             <AlignJustify className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('flipbook')}
+            className={`p-1.5 rounded-lg transition-colors ${
+              viewMode === 'flipbook' ? activeBtnClasses : buttonHoverClasses
+            }`}
+            title="Interactive 3D FlipBook"
+            aria-label="Interactive 3D FlipBook"
+          >
+            <BookOpen className="w-4 h-4" />
           </button>
         </div>
 

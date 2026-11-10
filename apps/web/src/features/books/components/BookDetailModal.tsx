@@ -3,6 +3,7 @@ import { BookFormat, BookStatus, BookSummaryDto } from '@bookflow/shared-types';
 import { useBook } from '../hooks/useBook';
 import { useUpdateBook } from '../hooks/useUpdateBook';
 import { booksApi } from '../services/books-api';
+import { RealisticBookCover } from './RealisticBookCover';
 
 interface BookDetailModalProps {
   bookSummary: BookSummaryDto | null;
@@ -103,18 +104,13 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Cover Column */}
             <div className="flex flex-col items-center">
-              <div className="aspect-[2/3] w-40 rounded-xl overflow-hidden bg-surface-muted border border-border shadow-md">
-                {bookSummary.hasCover ? (
-                  <img
-                    src={booksApi.getBookCoverUrl(bookSummary.id)}
-                    alt={bookSummary.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-text-muted text-xs p-4 text-center">
-                    No Cover Available
-                  </div>
-                )}
+              <div className="w-40 mb-4">
+                <RealisticBookCover
+                  title={bookSummary.title}
+                  author={bookSummary.author}
+                  coverUrl={bookSummary.hasCover ? booksApi.getBookCoverUrl(bookSummary.id) : null}
+                  format={bookSummary.format}
+                />
               </div>
               <button
                 type="button"

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type PdfZoomMode = 'custom' | 'fit-width' | 'fit-page';
-export type PdfViewMode = 'two-page' | 'single-page' | 'continuous';
+export type PdfViewMode = 'two-page' | 'single-page' | 'continuous' | 'flipbook';
 export type PdfTheme = 'light' | 'sepia' | 'dark';
 
 export interface PdfSettingsState {

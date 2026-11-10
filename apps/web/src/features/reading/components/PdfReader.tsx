@@ -13,6 +13,7 @@ import { PdfReaderTocSidebar, PdfOutlineItem } from './PdfReaderTocSidebar';
 import { PdfThumbnailsSidebar } from './PdfThumbnailsSidebar';
 import { BookmarksSidebar } from './BookmarksSidebar';
 import { useBookmarks } from '../hooks/useBookmarks';
+import { FlipBookView } from './FlipBookView';
 
 // Assign PDF.js worker URL
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -440,8 +441,23 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
           </div>
         )}
 
-        {/* Spread / Page Canvas Container */}
-        {!isLoadingDocument && !loadError && (
+        {/* Interactive 3D FlipBook View */}
+        {viewMode === 'flipbook' && !isLoadingDocument && !loadError && (
+          <FlipBookView
+            title={bookTitle}
+            author={author}
+            totalPages={totalPages}
+            pages={Array.from({ length: totalPages }, (_, i) => ({
+              pageNumber: i + 1,
+            }))}
+            currentPage={currentPage}
+            onPageChange={(page) => goToPage(page + 1)}
+            theme={theme}
+          />
+        )}
+
+        {/* Standard Spread / Page Canvas Container */}
+        {viewMode !== 'flipbook' && !isLoadingDocument && !loadError && (
           <div className="flex items-center justify-center shadow-2xl rounded-lg overflow-hidden relative">
             {/* Left Page (or Single Page) */}
             <div className="relative bg-white shadow-md">
@@ -468,8 +484,8 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
           </div>
         )}
 
-        {/* Invisible Click Margins for Quick Page Turns */}
-        {!isLoadingDocument && !loadError && (
+        {/* Invisible Click Margins for Quick Page Turns (Standard mode) */}
+        {viewMode !== 'flipbook' && !isLoadingDocument && !loadError && (
           <>
             <div
               onClick={handlePrev}
