@@ -35,6 +35,40 @@ interface PdfReaderProps {
   author?: string | null;
 }
 
+interface FlipBookErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+}
+
+interface FlipBookErrorBoundaryState {
+  hasError: boolean;
+}
+
+class FlipBookErrorBoundary extends React.Component<
+  FlipBookErrorBoundaryProps,
+  FlipBookErrorBoundaryState
+> {
+  constructor(props: FlipBookErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): FlipBookErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('FlipBook encountered an error, falling back:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -45,7 +79,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
   const rightRenderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
 
   // Store & API
-  const { zoom, zoomMode, viewMode, theme, rotation } = usePdfStore();
+  const { zoom, zoomMode, viewMode, setViewMode, theme, rotation } = usePdfStore();
 
   const { data: savedProgress, isLoading: isProgressLoading } = useReadingProgress(bookId);
   const { data: bookmarks = [] } = useBookmarks(bookId);
@@ -443,15 +477,32 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
 
         {/* Interactive 3D FlipBook View */}
         {viewMode === 'flipbook' && !isLoadingDocument && !loadError && (
-          <FlipBookView
-            title={bookTitle}
-            author={author}
-            totalPages={totalPages}
-            pdfDoc={pdfDoc}
-            currentPage={currentPage}
-            onPageChange={(page) => goToPage(page)}
-            theme={theme}
-          />
+          <FlipBookErrorBoundary
+            fallback={
+              <div className="flex flex-col items-center justify-center p-8 text-center max-w-sm">
+                <p className="text-xs opacity-75 mb-3 font-serif">
+                  Switching to two-page spread view...
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('two-page')}
+                  className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors shadow"
+                >
+                  Switch to Spread View
+                </button>
+              </div>
+            }
+          >
+            <FlipBookView
+              title={bookTitle}
+              author={author}
+              totalPages={totalPages}
+              pdfDoc={pdfDoc}
+              currentPage={currentPage}
+              onPageChange={(page) => goToPage(page)}
+              theme={theme}
+            />
+          </FlipBookErrorBoundary>
         )}
 
         {/* Standard Spread / Page Canvas Container */}

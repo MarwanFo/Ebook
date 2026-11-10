@@ -407,6 +407,56 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   const totalPageCount = Math.max(totalPages, pages.length || 1);
   const isOdd = totalPageCount % 2 !== 0;
 
+  // Construct strictly valid React elements (react-pageflip crashes if null/false/undefined is passed to cloneElement)
+  const bookElements: React.ReactElement[] = [];
+
+  if (pdfDoc) {
+    for (let i = 0; i < totalPageCount; i++) {
+      const pageNum = i + 1;
+      const isLeft = pageNum % 2 !== 0;
+      bookElements.push(
+        <FlipPdfPage
+          key={`pdf-page-${pageNum}`}
+          pageNumber={pageNum}
+          pdfDoc={pdfDoc}
+          theme={theme}
+          totalPages={totalPageCount}
+          isLeftPage={isLeft}
+        />,
+      );
+    }
+  } else if (pages.length > 0) {
+    for (const p of pages) {
+      bookElements.push(
+        <SoftPage
+          key={`soft-page-${p.pageNumber}`}
+          pageNumber={p.pageNumber}
+          total={totalPageCount}
+          theme={theme}
+          content={p.content}
+          title={cleanTitle}
+        />,
+      );
+    }
+  } else {
+    for (let i = 0; i < totalPageCount; i++) {
+      const pageNum = i + 1;
+      bookElements.push(
+        <SoftPage
+          key={`empty-page-${pageNum}`}
+          pageNumber={pageNum}
+          total={totalPageCount}
+          theme={theme}
+          title={cleanTitle}
+        />,
+      );
+    }
+  }
+
+  if (isOdd) {
+    bookElements.push(<BlankEndPage key="blank-end-page" theme={theme} isLeft={false} />);
+  }
+
   return (
     <div
       className={`relative w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 transition-colors duration-300 ${stageBg}`}
@@ -479,48 +529,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           showPageCorners={true}
           disableFlipByClick={false}
         >
-          {/* Render PDF Pages directly if pdfDoc is available */}
-          {pdfDoc
-            ? Array.from({ length: totalPageCount }, (_, i) => {
-                const pageNum = i + 1;
-                const isLeft = pageNum % 2 !== 0;
-                return (
-                  <FlipPdfPage
-                    key={pageNum}
-                    pageNumber={pageNum}
-                    pdfDoc={pdfDoc}
-                    theme={theme}
-                    totalPages={totalPageCount}
-                    isLeftPage={isLeft}
-                  />
-                );
-              })
-            : pages.length > 0
-              ? pages.map((p) => (
-                  <SoftPage
-                    key={p.pageNumber}
-                    pageNumber={p.pageNumber}
-                    total={totalPageCount}
-                    theme={theme}
-                    content={p.content}
-                    title={cleanTitle}
-                  />
-                ))
-              : Array.from({ length: totalPageCount }, (_, i) => {
-                  const pageNum = i + 1;
-                  return (
-                    <SoftPage
-                      key={pageNum}
-                      pageNumber={pageNum}
-                      total={totalPageCount}
-                      theme={theme}
-                      title={cleanTitle}
-                    />
-                  );
-                })}
-
-          {/* If odd page count, balance spread with blank end-sheet */}
-          {isOdd && <BlankEndPage key="blank-end" theme={theme} isLeft={false} />}
+          {bookElements}
         </HTMLFlipBook>
 
         {/* Navigation Arrow Right */}
