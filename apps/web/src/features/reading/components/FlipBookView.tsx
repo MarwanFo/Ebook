@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import HTMLFlipBook from 'react-pageflip';
+import * as pdfjsLib from 'pdfjs-dist';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,7 +9,9 @@ import {
   VolumeX,
   Maximize2,
   Minimize2,
+  Loader2,
 } from 'lucide-react';
+import { formatBookTitle } from '../../books/components/RealisticBookCover';
 
 export interface FlipPageData {
   pageNumber: number;
@@ -17,133 +20,221 @@ export interface FlipPageData {
   title?: string;
 }
 
-interface FlipBookViewProps {
+export interface FlipBookViewProps {
   title: string;
   author?: string | null;
   totalPages: number;
-  pages: FlipPageData[];
+  pdfDoc?: pdfjsLib.PDFDocumentProxy | null;
+  pages?: FlipPageData[];
   currentPage?: number;
   onPageChange?: (page: number) => void;
   theme?: 'light' | 'sepia' | 'dark';
 }
 
 /* -------------------------------------------------------------------------- */
-/* Rigid Hardcover Component (Front & Back)                                   */
+/* Real PDF Page Component (Renders PDF.js canvas with 3D book depth)         */
 /* -------------------------------------------------------------------------- */
-interface HardCoverProps {
-  title: string;
-  author?: string | null;
-  isBack?: boolean;
+interface FlipPdfPageProps {
+  pageNumber: number;
+  pdfDoc: pdfjsLib.PDFDocumentProxy;
+  theme: 'light' | 'sepia' | 'dark';
+  totalPages: number;
+  isLeftPage: boolean;
 }
 
-const HardCover = React.forwardRef<HTMLDivElement, HardCoverProps>((props, ref) => {
-  const { title, author, isBack = false } = props;
+const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, ref) => {
+  const { pageNumber, pdfDoc, theme, totalPages, isLeftPage } = props;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isRendered, setIsRendered] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
 
-  if (isBack) {
-    return (
-      <div
-        ref={ref}
-        data-density="hard"
-        className="w-full h-full bg-gradient-to-br from-[#1b263b] via-[#0d1b2a] to-[#070e17] text-amber-100/80 p-8 flex flex-col justify-between items-center shadow-2xl border-l-4 border-amber-500/20"
-        style={{
-          boxShadow: 'inset 4px 0 10px rgba(0,0,0,0.8), inset -2px 0 4px rgba(255,255,255,0.05)',
-        }}
-      >
-        <div className="w-full h-full border border-amber-400/20 rounded-sm p-4 flex flex-col items-center justify-center text-center">
-          <BookOpen className="w-8 h-8 text-amber-300/40 mb-3" />
-          <p className="text-xs uppercase tracking-widest text-amber-200/50 font-serif">
-            BookFlow Reader Edition
-          </p>
-          <div className="w-12 h-px bg-amber-400/20 my-3" />
-          <p className="text-[10px] text-amber-200/40 font-mono">End of Volume</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    let isCancelled = false;
+
+    const render = async () => {
+      if (!canvasRef.current || !pdfDoc) return;
+      try {
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+
+        setLoading(true);
+        const page = await pdfDoc.getPage(pageNumber);
+        if (isCancelled || !canvasRef.current) return;
+
+        // Base unscaled viewport
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+
+        // Target display area in FlipBook (matches HTMLFlipBook page dimensions minus padding)
+        const targetWidth = 440;
+        const targetHeight = 620;
+
+        const scaleX = targetWidth / unscaledViewport.width;
+        const scaleY = targetHeight / unscaledViewport.height;
+        const fitScale = Math.min(scaleX, scaleY);
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const viewport = page.getViewport({ scale: fitScale * dpr });
+
+        const canvas = canvasRef.current;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+        canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const renderTask = page.render({
+          canvas,
+          canvasContext: ctx,
+          viewport,
+        });
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
+
+        if (!isCancelled) {
+          setIsRendered(true);
+          setLoading(false);
+        }
+      } catch (err: unknown) {
+        const errorObj = err as { name?: string };
+        if (errorObj?.name !== 'RenderingCancelledException') {
+          console.error(`Page ${pageNumber} render failed:`, err);
+          if (!isCancelled) setLoading(false);
+        }
+      }
+    };
+
+    render();
+
+    return () => {
+      isCancelled = true;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
+  }, [pdfDoc, pageNumber]);
+
+  const pageBgClass = {
+    light: 'bg-white',
+    sepia: 'bg-[#faf6ee]',
+    dark: 'bg-[#1e1c1a]',
+  }[theme];
 
   return (
     <div
       ref={ref}
-      data-density="hard"
-      className="w-full h-full bg-gradient-to-br from-[#0d1b2a] via-[#1b263b] to-[#0d1b2a] text-amber-100 p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden border-r-4 border-amber-500/20"
+      className={`w-full h-full ${pageBgClass} relative flex flex-col justify-between overflow-hidden shadow-sm select-none`}
       style={{
-        boxShadow: 'inset -6px 0 14px rgba(0,0,0,0.8), inset 2px 0 4px rgba(255,255,255,0.1)',
+        boxShadow: isLeftPage
+          ? 'inset -12px 0 20px -8px rgba(0,0,0,0.14), inset -2px 0 4px rgba(0,0,0,0.06)'
+          : 'inset 12px 0 20px -8px rgba(0,0,0,0.14), inset 2px 0 4px rgba(0,0,0,0.06)',
       }}
     >
-      {/* Texture Grain */}
+      {/* Spine Crease Shadow Gradient */}
       <div
-        className="absolute inset-0 opacity-15 pointer-events-none"
+        className={`absolute top-0 bottom-0 pointer-events-none z-10 ${
+          isLeftPage ? 'right-0 w-8' : 'left-0 w-8'
+        }`}
         style={{
-          backgroundImage:
-            'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.2) 1px, transparent 1px)',
-          backgroundSize: '4px 4px',
+          background: isLeftPage
+            ? 'linear-gradient(to left, rgba(0,0,0,0.12), transparent)'
+            : 'linear-gradient(to right, rgba(0,0,0,0.12), transparent)',
         }}
       />
 
-      {/* Ornate Gilded Border */}
-      <div className="absolute inset-4 border-2 border-amber-400/30 rounded-sm p-1.5 flex flex-col justify-between pointer-events-none">
-        <div className="w-full h-full border border-amber-400/20 flex flex-col justify-between p-4">
-          <div className="flex justify-between items-center opacity-40">
-            <span className="text-[10px]">✦</span>
-            <span className="text-[10px]">✦</span>
-          </div>
-          <div className="flex justify-between items-center opacity-40">
-            <span className="text-[10px]">✦</span>
-            <span className="text-[10px]">✦</span>
-          </div>
-        </div>
-      </div>
+      {/* Fore-edge Paper Stack Depth Lines */}
+      <div
+        className={`absolute top-0 bottom-0 pointer-events-none z-10 opacity-40 ${
+          isLeftPage
+            ? 'left-0 w-1 border-r border-black/10'
+            : 'right-0 w-1 border-l border-black/10'
+        }`}
+      />
 
-      {/* Header Badge */}
-      <div className="relative z-10 text-center pt-4">
-        <span className="text-[9px] uppercase font-bold tracking-[0.25em] text-amber-200/70 border border-amber-300/20 px-3 py-1 rounded-full bg-black/30">
-          Collector&apos;s Edition
-        </span>
-      </div>
-
-      {/* Title & Author */}
-      <div className="relative z-10 text-center my-auto px-4">
-        <h1
-          className="font-serif text-2xl font-bold tracking-tight text-amber-50 mb-3 leading-snug"
-          style={{
-            textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 15px rgba(246,211,101,0.2)',
-          }}
-        >
-          {title}
-        </h1>
-        {author && (
-          <p className="font-serif text-xs italic tracking-widest text-amber-200/90 mt-2">
-            by {author}
-          </p>
+      {/* Actual PDF Page Canvas */}
+      <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden relative">
+        {loading && !isRendered && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-60">
+            <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
+            <span className="text-[11px] font-serif">Loading page {pageNumber}...</span>
+          </div>
         )}
+        <canvas
+          ref={canvasRef}
+          className={`block max-h-full max-w-full object-contain transition-opacity duration-200 ${
+            isRendered ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
       </div>
 
-      {/* Bottom Emblem */}
-      <div className="relative z-10 text-center pb-2 opacity-75">
-        <span className="text-[11px] font-serif tracking-widest text-amber-300/60">
-          ❖ &nbsp; BOOKFLOW &nbsp; ❖
-        </span>
+      {/* Discreet Page Footer */}
+      <div className="px-4 py-1.5 flex items-center justify-between text-[10px] font-serif opacity-60 border-t border-black/5">
+        {isLeftPage ? (
+          <span>{pageNumber}</span>
+        ) : (
+          <span className="ml-auto">
+            {pageNumber} of {totalPages}
+          </span>
+        )}
       </div>
     </div>
   );
 });
-HardCover.displayName = 'HardCover';
+FlipPdfPage.displayName = 'FlipPdfPage';
 
 /* -------------------------------------------------------------------------- */
-/* Soft Flexible Page Component                                               */
+/* Blank End Page (Used to balance odd page counts in spreads)                */
+/* -------------------------------------------------------------------------- */
+interface BlankEndPageProps {
+  theme: 'light' | 'sepia' | 'dark';
+  isLeft?: boolean;
+}
+
+const BlankEndPage = React.forwardRef<HTMLDivElement, BlankEndPageProps>((props, ref) => {
+  const { theme, isLeft = false } = props;
+  const pageBgClass = {
+    light: 'bg-[#faf8f5]',
+    sepia: 'bg-[#f4ecd8]',
+    dark: 'bg-[#1b1917]',
+  }[theme];
+
+  return (
+    <div
+      ref={ref}
+      className={`w-full h-full ${pageBgClass} relative flex items-center justify-center overflow-hidden select-none`}
+      style={{
+        boxShadow: isLeft
+          ? 'inset -12px 0 20px -8px rgba(0,0,0,0.14)'
+          : 'inset 12px 0 20px -8px rgba(0,0,0,0.14)',
+      }}
+    >
+      <div className="opacity-20 flex flex-col items-center gap-2">
+        <BookOpen className="w-8 h-8" />
+      </div>
+    </div>
+  );
+});
+BlankEndPage.displayName = 'BlankEndPage';
+
+/* -------------------------------------------------------------------------- */
+/* Soft Flexible Page Component (Fallback when pdfDoc is not present)         */
 /* -------------------------------------------------------------------------- */
 interface SoftPageProps {
   pageNumber: number;
   total: number;
   theme: 'light' | 'sepia' | 'dark';
-  canvasDataUrl?: string;
   content?: string;
   title?: string;
 }
 
 const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) => {
-  const { pageNumber, total, theme, canvasDataUrl, content, title } = props;
-  const isLeftPage = pageNumber % 2 === 0;
+  const { pageNumber, total, theme, content, title } = props;
+  const isLeftPage = pageNumber % 2 !== 0;
 
   const themeClasses = {
     light: 'bg-[#faf8f5] text-neutral-800',
@@ -161,31 +252,15 @@ const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) =>
           : 'inset 5px 0 12px rgba(0,0,0,0.06)',
       }}
     >
-      {/* Subtle Paper Texture */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-20"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.05) 1px, transparent 1px)',
-          backgroundSize: '6px 6px',
-        }}
-      />
-
       {/* Running Book Header */}
       <div className="flex items-center justify-between text-[10px] uppercase font-serif tracking-widest opacity-60 pb-2 border-b border-current/10">
         <span>{isLeftPage ? title || 'BookFlow' : ''}</span>
-        <span>{!isLeftPage ? `Chapter ${Math.ceil(pageNumber / 10)}` : ''}</span>
+        <span>{!isLeftPage ? `Page ${pageNumber}` : ''}</span>
       </div>
 
       {/* Page Body Content */}
       <div className="flex-1 my-4 flex items-center justify-center overflow-hidden">
-        {canvasDataUrl ? (
-          <img
-            src={canvasDataUrl}
-            alt={`Page ${pageNumber}`}
-            className="max-h-full max-w-full object-contain pointer-events-none rounded-xs"
-          />
-        ) : content ? (
+        {content ? (
           <div
             className="prose prose-sm font-serif leading-relaxed text-justify overflow-y-auto max-h-full px-2"
             dangerouslySetInnerHTML={{ __html: content }}
@@ -220,6 +295,7 @@ interface PageFlipApi {
   flipPrev: () => void;
   flipNext: () => void;
   turnToPage: (page: number) => void;
+  getCurrentPageIndex?: () => number;
 }
 
 interface FlipBookRefInstance {
@@ -228,9 +304,10 @@ interface FlipBookRefInstance {
 
 export const FlipBookView: React.FC<FlipBookViewProps> = ({
   title,
-  author,
+  author: _author,
   totalPages,
-  pages,
+  pdfDoc,
+  pages = [],
   currentPage = 1,
   onPageChange,
   theme = 'sepia',
@@ -238,6 +315,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   const flipBookRef = useRef<FlipBookRefInstance | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const cleanTitle = formatBookTitle(title);
 
   // Play subtle paper rustle sound synthesis on page turn
   const playPageTurnSound = useCallback(() => {
@@ -247,7 +325,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const audioCtx = new AudioCtxClass();
-      const bufferSize = audioCtx.sampleRate * 0.08; // 80ms white-noise whoosh
+      const bufferSize = audioCtx.sampleRate * 0.08;
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -275,7 +353,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     (e: { data: number }) => {
       playPageTurnSound();
       if (onPageChange) {
-        onPageChange(e.data);
+        onPageChange(e.data + 1);
       }
     },
     [onPageChange, playPageTurnSound],
@@ -303,40 +381,63 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     }
   };
 
+  // Synchronize when currentPage changes from reader controls
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
-  }, []);
+    if (!flipBookRef.current) return;
+    const targetIndex = Math.max(0, currentPage - 1);
+    try {
+      const pageFlip = flipBookRef.current.pageFlip();
+      if (pageFlip && typeof pageFlip.getCurrentPageIndex === 'function') {
+        const currentSpreadPage = pageFlip.getCurrentPageIndex();
+        if (currentSpreadPage !== undefined && Math.abs(currentSpreadPage - targetIndex) > 1) {
+          pageFlip.turnToPage(targetIndex);
+        }
+      }
+    } catch {
+      // safe fallback
+    }
+  }, [currentPage]);
+
+  const stageBg = {
+    light: 'bg-neutral-200/70',
+    sepia: 'bg-[#ebd9bd]',
+    dark: 'bg-[#0f0e0d]',
+  }[theme];
+
+  const totalPageCount = Math.max(totalPages, pages.length || 1);
+  const isOdd = totalPageCount % 2 !== 0;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-2 sm:p-6 select-none overflow-hidden">
-      {/* Top Floating Utility Controls */}
-      <div className="absolute top-3 right-4 z-40 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-1.5 text-white/80 shadow-md">
+    <div
+      className={`relative w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 transition-colors duration-300 ${stageBg}`}
+    >
+      {/* Top Floating Mini-Bar (Sound, Fullscreen) */}
+      <div className="absolute top-3 right-4 z-30 flex items-center gap-2 bg-surface/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-border shadow-md">
         <button
           type="button"
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="hover:text-white transition-colors p-1"
+          className="p-1 text-text-muted hover:text-text transition-colors"
           title={soundEnabled ? 'Mute page flip sound' : 'Enable page flip sound'}
+          aria-label={soundEnabled ? 'Mute sound' : 'Enable sound'}
         >
           {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
         </button>
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="hover:text-white transition-colors p-1"
+          className="p-1 text-text-muted hover:text-text transition-colors"
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
         >
           {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Physical Book Spine Gutter Light Simulation */}
+      {/* 3D FlipBook Stage with Book Spine Elevation */}
       <div
-        className="relative z-10 flex items-center justify-center w-full max-w-5xl"
+        className="relative max-w-full flex items-center justify-center p-2"
         style={{
-          filter:
-            'drop-shadow(0 20px 30px rgba(0,0,0,0.35)) drop-shadow(0 8px 12px rgba(0,0,0,0.2))',
+          perspective: '2500px',
         }}
       >
         {/* Navigation Arrow Left */}
@@ -353,22 +454,22 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         {/* The react-pageflip Canvas Container */}
         <HTMLFlipBook
           ref={flipBookRef}
-          width={440}
-          height={620}
+          width={460}
+          height={650}
           size="stretch"
           minWidth={320}
-          maxWidth={540}
+          maxWidth={620}
           minHeight={450}
-          maxHeight={780}
+          maxHeight={880}
           maxShadowOpacity={0.5}
-          showCover={true}
+          showCover={false}
           mobileScrollSupport={true}
           className="flip-book-container shadow-2xl rounded-sm overflow-hidden"
           style={{ margin: 'auto' }}
           onFlip={handleFlip}
           startPage={Math.max(0, currentPage - 1)}
           drawShadow={true}
-          flippingTime={700}
+          flippingTime={650}
           usePortrait={true}
           startZIndex={0}
           autoSize={true}
@@ -378,24 +479,48 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           showPageCorners={true}
           disableFlipByClick={false}
         >
-          {/* Front Rigid Hardcover */}
-          <HardCover title={title} author={author} />
+          {/* Render PDF Pages directly if pdfDoc is available */}
+          {pdfDoc
+            ? Array.from({ length: totalPageCount }, (_, i) => {
+                const pageNum = i + 1;
+                const isLeft = pageNum % 2 !== 0;
+                return (
+                  <FlipPdfPage
+                    key={pageNum}
+                    pageNumber={pageNum}
+                    pdfDoc={pdfDoc}
+                    theme={theme}
+                    totalPages={totalPageCount}
+                    isLeftPage={isLeft}
+                  />
+                );
+              })
+            : pages.length > 0
+              ? pages.map((p) => (
+                  <SoftPage
+                    key={p.pageNumber}
+                    pageNumber={p.pageNumber}
+                    total={totalPageCount}
+                    theme={theme}
+                    content={p.content}
+                    title={cleanTitle}
+                  />
+                ))
+              : Array.from({ length: totalPageCount }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <SoftPage
+                      key={pageNum}
+                      pageNumber={pageNum}
+                      total={totalPageCount}
+                      theme={theme}
+                      title={cleanTitle}
+                    />
+                  );
+                })}
 
-          {/* Soft Paper Inner Pages */}
-          {pages.map((p) => (
-            <SoftPage
-              key={p.pageNumber}
-              pageNumber={p.pageNumber}
-              total={totalPages}
-              theme={theme}
-              canvasDataUrl={p.canvasDataUrl}
-              content={p.content}
-              title={title}
-            />
-          ))}
-
-          {/* Back Rigid Hardcover */}
-          <HardCover title={title} author={author} isBack={true} />
+          {/* If odd page count, balance spread with blank end-sheet */}
+          {isOdd && <BlankEndPage key="blank-end" theme={theme} isLeft={false} />}
         </HTMLFlipBook>
 
         {/* Navigation Arrow Right */}

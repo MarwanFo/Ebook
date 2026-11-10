@@ -19,6 +19,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { usePdfStore, PdfTheme } from '../stores/pdf-store';
+import { formatBookTitle } from '../../books/components/RealisticBookCover';
 
 interface PdfReaderHeaderProps {
   title: string;
@@ -121,7 +122,9 @@ export const PdfReaderHeader: React.FC<PdfReaderHeaderProps> = ({
         <div className="h-4 w-px bg-current opacity-20 hidden sm:block" />
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xs sm:text-sm font-bold truncate tracking-tight">{title}</h1>
+          <h1 className="text-xs sm:text-sm font-bold truncate tracking-tight">
+            {formatBookTitle(title) || title}
+          </h1>
           {author && <p className="text-[10px] sm:text-xs opacity-60 truncate">by {author}</p>}
         </div>
       </div>

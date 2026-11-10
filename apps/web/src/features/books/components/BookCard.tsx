@@ -2,7 +2,7 @@ import React from 'react';
 import { BookFormat, BookStatus, BookSummaryDto } from '@bookflow/shared-types';
 import { Trash2 } from 'lucide-react';
 import { booksApi } from '../services/books-api';
-import { RealisticBookCover } from './RealisticBookCover';
+import { RealisticBookCover, formatBookTitle } from './RealisticBookCover';
 
 interface BookCardProps {
   book: BookSummaryDto;
@@ -86,7 +86,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onSelect, onDelete }) 
             onClick={() => onSelect(book)}
             className="text-xs font-bold text-text line-clamp-2 cursor-pointer hover:text-primary transition-colors"
           >
-            {book.title}
+            {formatBookTitle(book.title) || book.title}
           </h4>
           <p className="text-[11px] text-text-muted line-clamp-1 mt-0.5">
             {book.author || 'Unknown Author'}

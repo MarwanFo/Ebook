@@ -11,6 +11,29 @@ interface RealisticBookCoverProps {
   className?: string;
 }
 
+// Clean book titles by fixing Mojibake, stripping extensions, and normalizing spaces
+export function formatBookTitle(title: string): string {
+  if (!title) return '';
+  let cleaned = title;
+  try {
+    if (/[\u00C0-\u00FF][\u0080-\u00BF]/.test(cleaned) || /[\xC2\xC3][\x80-\xBF]/.test(cleaned)) {
+      cleaned = new TextDecoder('utf-8').decode(Uint8Array.from(cleaned, (c) => c.charCodeAt(0)));
+    }
+  } catch {
+    // fallback
+  }
+  return cleaned
+    .replace(/\.(pdf|epub|mobi|azw3)$/i, '')
+    .split('')
+    .filter((c) => {
+      const code = c.charCodeAt(0);
+      return code >= 32 && code !== 127 && (code < 128 || code > 159) && c !== '\u00AC';
+    })
+    .join('')
+    .replace(/_+/g, ' ')
+    .trim();
+}
+
 // Deterministic palette selector based on book title
 function getCoverPalette(title: string) {
   const palettes = [
@@ -82,7 +105,8 @@ export const RealisticBookCover: React.FC<RealisticBookCoverProps> = ({
   className = '',
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
-  const palette = getCoverPalette(title);
+  const cleanTitle = formatBookTitle(title);
+  const palette = getCoverPalette(cleanTitle || title);
   const hasRealImage = Boolean(coverUrl && !imageFailed);
 
   return (
@@ -174,7 +198,7 @@ export const RealisticBookCover: React.FC<RealisticBookCoverProps> = ({
                       '0 1px 2px rgba(0,0,0,0.9), 0 0 10px rgba(255,215,0,0.2), 0 -1px 1px rgba(255,255,255,0.2)',
                   }}
                 >
-                  {title}
+                  {cleanTitle || title}
                 </h3>
 
                 {author && (

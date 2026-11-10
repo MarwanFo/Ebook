@@ -43,8 +43,29 @@ export class BooksService {
 
     // 1. Validate file content and magic bytes
     const validated = validateBookBuffer(file.buffer, this.maxFileSizeBytes);
-    const originalFilename = file.originalname || `upload.${validated.format.toLowerCase()}`;
-    const baseName = originalFilename.replace(/\.[^/.]+$/, '');
+    const rawName = file.originalname || `upload.${validated.format.toLowerCase()}`;
+    let decodedFilename = rawName;
+    try {
+      const utf8 = Buffer.from(rawName, 'latin1').toString('utf8');
+      if (!utf8.includes('\ufffd')) {
+        decodedFilename = utf8;
+      }
+    } catch {
+      // Keep original if decoding fails
+    }
+    const sanitizedFilename = decodedFilename
+      .split('')
+      .filter((c) => {
+        const code = c.charCodeAt(0);
+        return code >= 32 && code !== 127 && (code < 128 || code > 159) && c !== '\u00AC';
+      })
+      .join('');
+    const originalFilename = sanitizedFilename;
+    const baseName =
+      sanitizedFilename
+        .replace(/\.[^/.]+$/, '')
+        .replace(/_+/g, ' ')
+        .trim() || sanitizedFilename;
 
     // 2. Extract metadata and cover image based on format
     let extractedMetadata = {

@@ -447,11 +447,9 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
             title={bookTitle}
             author={author}
             totalPages={totalPages}
-            pages={Array.from({ length: totalPages }, (_, i) => ({
-              pageNumber: i + 1,
-            }))}
+            pdfDoc={pdfDoc}
             currentPage={currentPage}
-            onPageChange={(page) => goToPage(page + 1)}
+            onPageChange={(page) => goToPage(page)}
             theme={theme}
           />
         )}

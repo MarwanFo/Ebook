@@ -10,6 +10,7 @@ import { LibraryFilters } from '../features/books/components/LibraryFilters';
 import { BookGrid } from '../features/books/components/BookGrid';
 import { UploadModal } from '../features/books/components/UploadModal';
 import { BookDetailModal } from '../features/books/components/BookDetailModal';
+import { formatBookTitle } from '../features/books/components/RealisticBookCover';
 import { ApiHealthStatus } from '../components/health/ApiHealthStatus';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -137,7 +138,9 @@ export const HomePage: React.FC = () => {
                   </span>
                   <span className="text-xs text-text-muted">Continue Reading</span>
                 </div>
-                <h3 className="text-sm font-bold text-text mt-0.5">{continueBook.title}</h3>
+                <h3 className="text-sm font-bold text-text mt-0.5">
+                  {formatBookTitle(continueBook.title) || continueBook.title}
+                </h3>
                 {continueBook.author && (
                   <p className="text-xs text-text-muted">by {continueBook.author}</p>
                 )}

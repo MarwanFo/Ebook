@@ -3,7 +3,7 @@ import { BookFormat, BookStatus, BookSummaryDto } from '@bookflow/shared-types';
 import { useBook } from '../hooks/useBook';
 import { useUpdateBook } from '../hooks/useUpdateBook';
 import { booksApi } from '../services/books-api';
-import { RealisticBookCover } from './RealisticBookCover';
+import { RealisticBookCover, formatBookTitle } from './RealisticBookCover';
 
 interface BookDetailModalProps {
   bookSummary: BookSummaryDto | null;
@@ -79,7 +79,7 @@ export const BookDetailModal: React.FC<BookDetailModalProps> = ({
               {bookSummary.format}
             </span>
             <h2 id="book-detail-title" className="text-lg font-bold text-text truncate max-w-md">
-              {bookSummary.title}
+              {formatBookTitle(bookSummary.title) || bookSummary.title}
             </h2>
           </div>
           <button
