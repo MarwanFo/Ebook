@@ -448,7 +448,9 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
       {/* Main Viewing Canvas Stage */}
       <main
         ref={containerRef}
-        className="relative flex-1 w-full overflow-auto flex items-center justify-center p-4 sm:p-6"
+        className={`relative flex-1 w-full flex items-center justify-center ${
+          viewMode === 'flipbook' ? 'p-1 sm:p-2 overflow-hidden' : 'p-4 sm:p-6 overflow-auto'
+        }`}
       >
         {/* Loading Spinner */}
         {(isLoadingDocument || isProgressLoading) && (

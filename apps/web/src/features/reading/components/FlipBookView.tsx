@@ -32,7 +32,7 @@ export interface FlipBookViewProps {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Real PDF Page Component (Renders PDF.js canvas with 3D book depth)         */
+/* Real PDF Page Component (Renders crisp PDF.js canvas with 3D book depth)   */
 /* -------------------------------------------------------------------------- */
 interface FlipPdfPageProps {
   pageNumber: number;
@@ -40,10 +40,20 @@ interface FlipPdfPageProps {
   theme: 'light' | 'sepia' | 'dark';
   totalPages: number;
   isLeftPage: boolean;
+  targetWidth?: number;
+  targetHeight?: number;
 }
 
 const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, ref) => {
-  const { pageNumber, pdfDoc, theme, totalPages, isLeftPage } = props;
+  const {
+    pageNumber,
+    pdfDoc,
+    theme,
+    totalPages,
+    isLeftPage,
+    targetWidth = 600,
+    targetHeight = 850,
+  } = props;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isRendered, setIsRendered] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -67,12 +77,9 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
         // Base unscaled viewport
         const unscaledViewport = page.getViewport({ scale: 1.0 });
 
-        // Target display area in FlipBook (matches HTMLFlipBook page dimensions minus padding)
-        const targetWidth = 440;
-        const targetHeight = 620;
-
-        const scaleX = targetWidth / unscaledViewport.width;
-        const scaleY = targetHeight / unscaledViewport.height;
+        // High resolution target scaling so PDF text and charts are big and sharp
+        const scaleX = (targetWidth * 1.5) / unscaledViewport.width;
+        const scaleY = (targetHeight * 1.5) / unscaledViewport.height;
         const fitScale = Math.min(scaleX, scaleY);
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -81,8 +88,6 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
         const canvas = canvasRef.current;
         canvas.width = Math.floor(viewport.width);
         canvas.height = Math.floor(viewport.height);
-        canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
-        canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -117,7 +122,7 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
         renderTaskRef.current = null;
       }
     };
-  }, [pdfDoc, pageNumber]);
+  }, [pdfDoc, pageNumber, targetWidth, targetHeight]);
 
   const pageBgClass = {
     light: 'bg-white',
@@ -128,52 +133,52 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
   return (
     <div
       ref={ref}
-      className={`w-full h-full ${pageBgClass} relative flex flex-col justify-between overflow-hidden shadow-sm select-none`}
+      className={`w-full h-full ${pageBgClass} relative flex flex-col justify-between overflow-hidden select-none`}
       style={{
         boxShadow: isLeftPage
-          ? 'inset -12px 0 20px -8px rgba(0,0,0,0.14), inset -2px 0 4px rgba(0,0,0,0.06)'
-          : 'inset 12px 0 20px -8px rgba(0,0,0,0.14), inset 2px 0 4px rgba(0,0,0,0.06)',
+          ? 'inset -16px 0 24px -10px rgba(0,0,0,0.20), inset -2px 0 6px rgba(0,0,0,0.08)'
+          : 'inset 16px 0 24px -10px rgba(0,0,0,0.20), inset 2px 0 6px rgba(0,0,0,0.08)',
       }}
     >
-      {/* Spine Crease Shadow Gradient */}
+      {/* Deep Center Gutter Binding Shadow */}
       <div
-        className={`absolute top-0 bottom-0 pointer-events-none z-10 ${
-          isLeftPage ? 'right-0 w-8' : 'left-0 w-8'
+        className={`absolute top-0 bottom-0 pointer-events-none z-20 ${
+          isLeftPage ? 'right-0 w-12' : 'left-0 w-12'
         }`}
         style={{
           background: isLeftPage
-            ? 'linear-gradient(to left, rgba(0,0,0,0.12), transparent)'
-            : 'linear-gradient(to right, rgba(0,0,0,0.12), transparent)',
+            ? 'linear-gradient(to left, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.08) 40%, transparent 100%)'
+            : 'linear-gradient(to right, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.08) 40%, transparent 100%)',
         }}
       />
 
-      {/* Fore-edge Paper Stack Depth Lines */}
+      {/* Layered Paper Edge Rim (Simulating pages stacked underneath) */}
       <div
-        className={`absolute top-0 bottom-0 pointer-events-none z-10 opacity-40 ${
+        className={`absolute top-0 bottom-0 pointer-events-none z-10 opacity-70 ${
           isLeftPage
-            ? 'left-0 w-1 border-r border-black/10'
-            : 'right-0 w-1 border-l border-black/10'
+            ? 'left-0 w-2.5 border-r border-black/15 bg-gradient-to-r from-black/15 via-black/5 to-transparent'
+            : 'right-0 w-2.5 border-l border-black/15 bg-gradient-to-l from-black/15 via-black/5 to-transparent'
         }`}
       />
 
-      {/* Actual PDF Page Canvas */}
-      <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-3 overflow-hidden relative">
+      {/* Actual PDF Page Canvas (Scaled large to fill page) */}
+      <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-4 overflow-hidden relative">
         {loading && !isRendered && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-60">
-            <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
-            <span className="text-[11px] font-serif">Loading page {pageNumber}...</span>
+            <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
+            <span className="text-xs font-serif">Rendering page {pageNumber}...</span>
           </div>
         )}
         <canvas
           ref={canvasRef}
-          className={`block max-h-full max-w-full object-contain transition-opacity duration-200 ${
+          className={`block max-h-full max-w-full w-auto h-auto object-contain transition-opacity duration-200 ${
             isRendered ? 'opacity-100' : 'opacity-0'
           }`}
         />
       </div>
 
       {/* Discreet Page Footer */}
-      <div className="px-4 py-1.5 flex items-center justify-between text-[10px] font-serif opacity-60 border-t border-black/5">
+      <div className="px-5 py-2 flex items-center justify-between text-[11px] font-serif opacity-70 border-t border-black/5">
         {isLeftPage ? (
           <span>{pageNumber}</span>
         ) : (
@@ -209,12 +214,12 @@ const BlankEndPage = React.forwardRef<HTMLDivElement, BlankEndPageProps>((props,
       className={`w-full h-full ${pageBgClass} relative flex items-center justify-center overflow-hidden select-none`}
       style={{
         boxShadow: isLeft
-          ? 'inset -12px 0 20px -8px rgba(0,0,0,0.14)'
-          : 'inset 12px 0 20px -8px rgba(0,0,0,0.14)',
+          ? 'inset -16px 0 24px -10px rgba(0,0,0,0.20)'
+          : 'inset 16px 0 24px -10px rgba(0,0,0,0.20)',
       }}
     >
-      <div className="opacity-20 flex flex-col items-center gap-2">
-        <BookOpen className="w-8 h-8" />
+      <div className="opacity-25 flex flex-col items-center gap-2 font-serif text-text-muted">
+        <BookOpen className="w-10 h-10" />
       </div>
     </div>
   );
@@ -245,15 +250,15 @@ const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) =>
   return (
     <div
       ref={ref}
-      className={`w-full h-full ${themeClasses} relative p-6 sm:p-8 flex flex-col justify-between overflow-hidden shadow-sm`}
+      className={`w-full h-full ${themeClasses} relative p-6 sm:p-10 flex flex-col justify-between overflow-hidden shadow-sm`}
       style={{
         boxShadow: isLeftPage
-          ? 'inset -5px 0 12px rgba(0,0,0,0.06)'
-          : 'inset 5px 0 12px rgba(0,0,0,0.06)',
+          ? 'inset -12px 0 20px -8px rgba(0,0,0,0.12)'
+          : 'inset 12px 0 20px -8px rgba(0,0,0,0.12)',
       }}
     >
       {/* Running Book Header */}
-      <div className="flex items-center justify-between text-[10px] uppercase font-serif tracking-widest opacity-60 pb-2 border-b border-current/10">
+      <div className="flex items-center justify-between text-[11px] uppercase font-serif tracking-widest opacity-60 pb-3 border-b border-current/10">
         <span>{isLeftPage ? title || 'BookFlow' : ''}</span>
         <span>{!isLeftPage ? `Page ${pageNumber}` : ''}</span>
       </div>
@@ -262,19 +267,19 @@ const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) =>
       <div className="flex-1 my-4 flex items-center justify-center overflow-hidden">
         {content ? (
           <div
-            className="prose prose-sm font-serif leading-relaxed text-justify overflow-y-auto max-h-full px-2"
+            className="prose prose-base font-serif leading-relaxed text-justify overflow-y-auto max-h-full px-4"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center opacity-40 font-serif space-y-2">
-            <BookOpen className="w-8 h-8" />
-            <span className="text-xs italic">Page {pageNumber}</span>
+          <div className="flex flex-col items-center justify-center opacity-40 font-serif space-y-3">
+            <BookOpen className="w-10 h-10" />
+            <span className="text-sm italic">Page {pageNumber}</span>
           </div>
         )}
       </div>
 
       {/* Footer Page Number */}
-      <div className="flex items-center justify-between text-[11px] font-serif opacity-70 pt-2 border-t border-current/10">
+      <div className="flex items-center justify-between text-xs font-serif opacity-70 pt-3 border-t border-current/10">
         {isLeftPage ? (
           <span>{pageNumber}</span>
         ) : (
@@ -312,10 +317,48 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   onPageChange,
   theme = 'sepia',
 }) => {
+  const stageRef = useRef<HTMLDivElement>(null);
   const flipBookRef = useRef<FlipBookRefInstance | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const cleanTitle = formatBookTitle(title);
+
+  // Dynamic responsive book dimensions to fill the whole screen
+  const [bookDimensions, setBookDimensions] = useState({ width: 580, height: 820 });
+
+  useEffect(() => {
+    if (!stageRef.current) return;
+
+    const computeSize = () => {
+      if (!stageRef.current) return;
+      const rect = stageRef.current.getBoundingClientRect();
+
+      // Available reading stage boundaries
+      const availW = Math.max(720, rect.width - 90); // room for side arrows
+      const availH = Math.max(500, rect.height - 40); // room for bottom hint
+
+      // Standard book page aspect ratio (width / height ~ 0.707)
+      const aspect = 0.707;
+      let pageH = availH;
+      let pageW = Math.round(pageH * aspect);
+
+      // Two-page spread width
+      if (pageW * 2 > availW) {
+        pageW = Math.round(availW / 2);
+        pageH = Math.round(pageW / aspect);
+      }
+
+      setBookDimensions({
+        width: Math.min(850, Math.max(360, pageW)),
+        height: Math.min(1200, Math.max(500, pageH)),
+      });
+    };
+
+    computeSize();
+    const observer = new ResizeObserver(computeSize);
+    observer.observe(stageRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Play subtle paper rustle sound synthesis on page turn
   const playPageTurnSound = useCallback(() => {
@@ -399,7 +442,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   }, [currentPage]);
 
   const stageBg = {
-    light: 'bg-neutral-200/70',
+    light: 'bg-neutral-200/80',
     sepia: 'bg-[#ebd9bd]',
     dark: 'bg-[#0f0e0d]',
   }[theme];
@@ -422,6 +465,8 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           theme={theme}
           totalPages={totalPageCount}
           isLeftPage={isLeft}
+          targetWidth={bookDimensions.width}
+          targetHeight={bookDimensions.height}
         />,
       );
     }
@@ -459,10 +504,11 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
 
   return (
     <div
-      className={`relative w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 transition-colors duration-300 ${stageBg}`}
+      ref={stageRef}
+      className={`relative w-full h-full flex flex-col items-center justify-center p-1 sm:p-3 overflow-hidden select-none transition-colors duration-300 ${stageBg}`}
     >
       {/* Top Floating Mini-Bar (Sound, Fullscreen) */}
-      <div className="absolute top-3 right-4 z-30 flex items-center gap-2 bg-surface/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-border shadow-md">
+      <div className="absolute top-3 right-4 z-30 flex items-center gap-2 bg-surface/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-border shadow-md">
         <button
           type="button"
           onClick={() => setSoundEnabled(!soundEnabled)}
@@ -483,69 +529,90 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         </button>
       </div>
 
-      {/* 3D FlipBook Stage with Book Spine Elevation */}
+      {/* 3D Realistic Open Book Casing (Hardcover outer rim & paper block depth) */}
       <div
-        className="relative max-w-full flex items-center justify-center p-2"
+        className="relative flex items-center justify-center transition-all duration-300"
         style={{
-          perspective: '2500px',
+          filter:
+            'drop-shadow(0 25px 35px rgba(0, 0, 0, 0.40)) drop-shadow(0 10px 15px rgba(0, 0, 0, 0.25))',
         }}
       >
         {/* Navigation Arrow Left */}
         <button
           type="button"
           onClick={flipPrev}
-          className="hidden md:flex absolute -left-12 z-30 p-3 rounded-full bg-surface/80 hover:bg-surface border border-border shadow-lg text-text transition-all hover:scale-110 active:scale-95"
+          className="hidden md:flex absolute -left-14 z-30 p-3 rounded-full bg-surface/90 hover:bg-surface border border-border shadow-xl text-text transition-all hover:scale-110 active:scale-95"
           title="Previous Page (or click/drag left page)"
           aria-label="Previous Page"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-6 h-6" />
         </button>
 
+        {/* Hardcover Outer Leather / Cloth Trim visible around the edges */}
+        <div
+          className="absolute -inset-2 sm:-inset-3 bg-gradient-to-r from-[#1c1209] via-[#2d1b0e] to-[#1c1209] rounded-md pointer-events-none z-0 border border-amber-950/60"
+          style={{
+            boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.1), inset 0 -2px 4px rgba(0,0,0,0.8)',
+          }}
+        />
+
+        {/* Center Book Spine Seam Indicator */}
+        <div
+          className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-3 pointer-events-none z-30 opacity-40"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.3) 100%)',
+          }}
+        />
+
         {/* The react-pageflip Canvas Container */}
-        <HTMLFlipBook
-          ref={flipBookRef}
-          width={460}
-          height={650}
-          size="stretch"
-          minWidth={320}
-          maxWidth={620}
-          minHeight={450}
-          maxHeight={880}
-          maxShadowOpacity={0.5}
-          showCover={false}
-          mobileScrollSupport={true}
-          className="flip-book-container shadow-2xl rounded-sm overflow-hidden"
-          style={{ margin: 'auto' }}
-          onFlip={handleFlip}
-          startPage={Math.max(0, currentPage - 1)}
-          drawShadow={true}
-          flippingTime={650}
-          usePortrait={true}
-          startZIndex={0}
-          autoSize={true}
-          clickEventForward={true}
-          useMouseEvents={true}
-          swipeDistance={30}
-          showPageCorners={true}
-          disableFlipByClick={false}
-        >
-          {bookElements}
-        </HTMLFlipBook>
+        <div className="relative z-10">
+          <HTMLFlipBook
+            key={`${bookDimensions.width}-${bookDimensions.height}`}
+            ref={flipBookRef}
+            width={bookDimensions.width}
+            height={bookDimensions.height}
+            size="fixed"
+            minWidth={320}
+            maxWidth={1400}
+            minHeight={450}
+            maxHeight={1600}
+            maxShadowOpacity={0.6}
+            showCover={false}
+            usePortrait={false}
+            mobileScrollSupport={false}
+            className="flip-book-container overflow-hidden rounded-xs"
+            style={{ margin: 'auto' }}
+            onFlip={handleFlip}
+            startPage={Math.max(0, currentPage - 1)}
+            drawShadow={true}
+            flippingTime={600}
+            startZIndex={0}
+            autoSize={true}
+            clickEventForward={true}
+            useMouseEvents={true}
+            swipeDistance={30}
+            showPageCorners={true}
+            disableFlipByClick={false}
+          >
+            {bookElements}
+          </HTMLFlipBook>
+        </div>
 
         {/* Navigation Arrow Right */}
         <button
           type="button"
           onClick={flipNext}
-          className="hidden md:flex absolute -right-12 z-30 p-3 rounded-full bg-surface/80 hover:bg-surface border border-border shadow-lg text-text transition-all hover:scale-110 active:scale-95"
+          className="hidden md:flex absolute -right-14 z-30 p-3 rounded-full bg-surface/90 hover:bg-surface border border-border shadow-xl text-text transition-all hover:scale-110 active:scale-95"
           title="Next Page (or click/drag right page)"
           aria-label="Next Page"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-6 h-6" />
         </button>
       </div>
 
       {/* Gesture Hint at Bottom */}
-      <p className="mt-4 text-[11px] font-serif tracking-wider text-text-muted opacity-60 text-center">
+      <p className="mt-3 text-[11px] font-serif tracking-wider text-text-muted opacity-75 text-center">
         ✦ Drag or click the page corner to turn like a physical book ✦
       </p>
     </div>
