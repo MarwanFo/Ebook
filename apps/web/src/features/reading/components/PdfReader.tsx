@@ -182,6 +182,8 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
 
   // Keyboard navigation
   useEffect(() => {
+    if (viewMode === 'flipbook') return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTocOpen || isThumbnailsOpen) return;
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
@@ -202,7 +204,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, isThumbnailsOpen, isTocOpen]);
+  }, [handleNext, handlePrev, isThumbnailsOpen, isTocOpen, viewMode]);
 
   // Load PDF Document
   useEffect(() => {

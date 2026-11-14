@@ -14,7 +14,7 @@ export function useAuth() {
       const meResult = await authApi.getMe();
       setAuthenticated(meResult.user, tokens.accessToken);
     } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 401) {
+      if (error instanceof ApiError && (error.statusCode === 401 || error.statusCode === 403)) {
         setUnauthenticated();
       } else {
         // Network or 5xx server failure: set network_error without destroying credentials
