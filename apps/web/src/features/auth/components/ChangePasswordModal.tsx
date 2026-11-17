@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChangePassword } from '../hooks/useChangePassword';
 import { Button } from '../../../components/common/Button';
-import { AlertCircle, Lock, X } from 'lucide-react';
+import { AlertCircle, Lock, X, KeyRound } from 'lucide-react';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -17,6 +17,17 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
 
   const changeMutation = useChangePassword();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !changeMutation.isPending) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, changeMutation.isPending]);
 
   if (!isOpen) return null;
 
@@ -58,25 +69,44 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={() => !changeMutation.isPending && onClose()}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl relative"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-password-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          disabled={changeMutation.isPending}
+          className="absolute right-4 top-4 text-text-muted hover:text-text hover:bg-surface-muted p-1.5 rounded-lg transition-colors disabled:opacity-50"
           aria-label="Close modal"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Change Password</h3>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Changing your password will revoke all your other active sessions.
-        </p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+            <KeyRound className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 id="change-password-title" className="text-xl font-bold font-serif text-text">
+              Change Password
+            </h3>
+            <p className="text-xs text-text-muted">
+              Changing your password will revoke all other active sessions.
+            </p>
+          </div>
+        </div>
 
         {formError && (
           <div
             role="alert"
-            className="mt-4 flex items-start space-x-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
+            className="my-4 flex items-start space-x-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
             <span>{formError}</span>
@@ -87,13 +117,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
           <div>
             <label
               htmlFor="currentPassword"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="block text-xs font-semibold text-text mb-1.5"
             >
               Current Password
             </label>
-            <div className="relative mt-1">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Lock className="h-4 w-4 text-gray-400" />
+            <div className="relative rounded-xl shadow-xs">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Lock className="h-4 w-4 text-text-muted" />
               </div>
               <input
                 id="currentPassword"
@@ -102,21 +132,18 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-indigo-600 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="block w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label
-              htmlFor="newPassword"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="newPassword" className="block text-xs font-semibold text-text mb-1.5">
               New Passphrase
             </label>
-            <div className="relative mt-1">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Lock className="h-4 w-4 text-gray-400" />
+            <div className="relative rounded-xl shadow-xs">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Lock className="h-4 w-4 text-text-muted" />
               </div>
               <input
                 id="newPassword"
@@ -125,23 +152,23 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-indigo-600 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="block w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 placeholder="At least 15 characters..."
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">Length: {charCount} / 15+ characters</p>
+            <p className="mt-1 text-xs text-text-muted">Length: {charCount} / 15+ characters</p>
           </div>
 
           <div>
             <label
               htmlFor="confirmNewPassword"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              className="block text-xs font-semibold text-text mb-1.5"
             >
               Confirm New Passphrase
             </label>
-            <div className="relative mt-1">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Lock className="h-4 w-4 text-gray-400" />
+            <div className="relative rounded-xl shadow-xs">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                <Lock className="h-4 w-4 text-text-muted" />
               </div>
               <input
                 id="confirmNewPassword"
@@ -150,12 +177,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-indigo-600 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                className="block w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end space-x-3">
+          <div className="mt-6 flex justify-end space-x-3 pt-3 border-t border-border">
             <Button
               type="button"
               variant="outline"

@@ -13,49 +13,51 @@ export const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-paper-200 dark:border-paper-800 bg-paper-50/90 dark:bg-paper-950/90 backdrop-blur-md transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand Logo & Mobile Menu Toggle */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleSidebar}
-            aria-label="Toggle navigation menu"
-            className="p-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-paper-200 dark:text-paper-400 dark:hover:text-paper-100 dark:hover:bg-paper-800 sm:hidden transition-colors"
-          >
-            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        {/* Brand Logo, Mobile Menu Toggle & Navigation Links */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              aria-label="Toggle navigation menu"
+              className="p-2 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-paper-200 dark:text-paper-400 dark:hover:text-paper-100 dark:hover:bg-paper-800 sm:hidden transition-colors"
+            >
+              {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
 
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm group-hover:bg-brand-600 transition-all group-hover:scale-105">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold font-serif text-ink-900 dark:text-paper-50 tracking-tight">
-                BookFlow
-              </span>
-              <span className="text-[10px] uppercase font-semibold text-brand-600 dark:text-brand-400 tracking-widest -mt-1">
-                Reader
-              </span>
-            </div>
-          </Link>
-        </div>
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-sm group-hover:bg-brand-600 transition-all group-hover:scale-105">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold font-serif text-ink-900 dark:text-paper-50 tracking-tight">
+                  BookFlow
+                </span>
+                <span className="text-[10px] uppercase font-semibold text-brand-600 dark:text-brand-400 tracking-widest -mt-1">
+                  Reader
+                </span>
+              </div>
+            </Link>
+          </div>
 
-        {/* Navigation Links */}
-        <nav className="hidden sm:flex items-center gap-1">
-          <Link
-            to="/"
-            className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
-          >
-            {isAuthenticated ? 'Library' : 'Overview'}
-          </Link>
-          {isAuthenticated && (
+          {/* Navigation Links */}
+          <nav className="hidden sm:flex items-center gap-1">
             <Link
-              to="/profile"
+              to="/"
               className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
             >
-              Settings
+              {isAuthenticated ? 'Library' : 'Overview'}
             </Link>
-          )}
-        </nav>
+            {isAuthenticated && (
+              <Link
+                to="/profile"
+                className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
+              >
+                Settings
+              </Link>
+            )}
+          </nav>
+        </div>
 
         {/* Auth State & Theme Switcher */}
         <div className="flex items-center gap-3">
