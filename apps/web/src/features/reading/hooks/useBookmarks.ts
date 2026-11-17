@@ -6,6 +6,6 @@ export function useBookmarks(bookId: string | undefined) {
     queryKey: ['bookmarks', bookId],
     queryFn: () => (bookId ? bookmarksApi.getBookmarks(bookId) : Promise.resolve([])),
     enabled: Boolean(bookId),
-    staleTime: 30000,
+    staleTime: 0,
   });
 }

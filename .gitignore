@@ -20,7 +20,8 @@ coverage/
 !**/.env.example
 
 # Database & Storage
-storage/
+/storage/
+apps/api/storage/
 *.db
 *.sqlite
 *.sqlite3

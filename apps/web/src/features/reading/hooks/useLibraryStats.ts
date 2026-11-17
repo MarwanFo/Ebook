@@ -9,7 +9,7 @@ export function useLibraryStats(options: UseLibraryStatsOptions = {}) {
   return useQuery({
     queryKey: ['library-stats'],
     queryFn: () => bookmarksApi.getLibraryStats(),
-    staleTime: 60000,
+    staleTime: 0,
     ...options,
   });
 }

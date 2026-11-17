@@ -10,6 +10,8 @@ enum Environment {
 enum StorageDriver {
   Local = 'local',
   S3 = 's3',
+  R2 = 'r2',
+  Cloudinary = 'cloudinary',
 }
 
 export class EnvironmentVariables {
@@ -117,6 +119,22 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   S3_SECRET_ACCESS_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_CLOUD_NAME?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_API_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  CLOUDINARY_URL?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

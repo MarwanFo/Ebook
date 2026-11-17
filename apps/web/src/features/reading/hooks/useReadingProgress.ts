@@ -6,6 +6,6 @@ export function useReadingProgress(bookId: string | undefined) {
     queryKey: ['reading-progress', bookId],
     queryFn: () => (bookId ? readingApi.getProgress(bookId) : Promise.resolve(null)),
     enabled: Boolean(bookId),
-    staleTime: 60000,
+    staleTime: 0,
   });
 }

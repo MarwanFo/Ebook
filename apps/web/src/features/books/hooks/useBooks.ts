@@ -10,7 +10,7 @@ export function useBooks(query: BookQueryDto = {}, options: UseBooksOptions = {}
   return useQuery({
     queryKey: ['books', query],
     queryFn: () => booksApi.getBooks(query),
-    staleTime: 30000,
+    staleTime: 0,
     ...options,
   });
 }
