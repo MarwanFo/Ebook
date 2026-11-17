@@ -55,14 +55,6 @@ export const Header: React.FC = () => {
               Settings
             </Link>
           )}
-          <a
-            href="http://localhost:3000/api/docs"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
-          >
-            API Docs
-          </a>
         </nav>
 
         {/* Auth State & Theme Switcher */}

@@ -9,7 +9,7 @@ export default () => ({
   },
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30d',
     issuer: process.env.JWT_ISSUER || 'bookflow-api',
     audience: process.env.JWT_AUDIENCE || 'bookflow-client',
   },
@@ -17,7 +17,12 @@ export default () => ({
     refreshCookieName:
       process.env.REFRESH_COOKIE_NAME ||
       (process.env.NODE_ENV === 'production' ? '__Host-bookflow_refresh' : 'bookflow_refresh'),
-    refreshExpirationDays: parseInt(process.env.REFRESH_EXPIRATION_DAYS || '7', 10),
+    refreshExpirationDays: parseInt(
+      process.env.REFRESH_EXPIRATION_DAYS ||
+        process.env.REFRESH_TOKEN_EXPIRES_IN?.replace('d', '') ||
+        '365',
+      10,
+    ),
   },
   smtp: {
     host: process.env.SMTP_HOST || 'localhost',

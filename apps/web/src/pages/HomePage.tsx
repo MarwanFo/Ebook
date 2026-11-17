@@ -11,6 +11,7 @@ import { BookGrid } from '../features/books/components/BookGrid';
 import { UploadModal } from '../features/books/components/UploadModal';
 import { BookDetailModal } from '../features/books/components/BookDetailModal';
 import { formatBookTitle } from '../features/books/components/RealisticBookCover';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 import { ApiHealthStatus } from '../components/health/ApiHealthStatus';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -29,11 +30,14 @@ export const HomePage: React.FC = () => {
   });
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookSummaryDto | null>(null);
+  const [bookToDelete, setBookToDelete] = useState<BookSummaryDto | null>(null);
 
-  const { data: booksData, isLoading: isBooksLoading } = useBooks(
-    isAuthenticated ? filters : { page: 1, limit: 1 },
-  );
-  const { data: stats } = useLibraryStats();
+  const { data: booksData, isLoading: isBooksLoading } = useBooks(filters, {
+    enabled: isAuthenticated,
+  });
+  const { data: stats } = useLibraryStats({
+    enabled: isAuthenticated,
+  });
   const deleteMutation = useDeleteBook();
 
   // Safely extract books array and pagination metadata regardless of envelope shape
@@ -62,6 +66,15 @@ export const HomePage: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to delete book', err);
+    }
+  };
+
+  const handlePromptDelete = (bookId: string) => {
+    const book = booksList.find((b) => b.id === bookId);
+    if (book) {
+      setBookToDelete(book);
+    } else {
+      handleDeleteBook(bookId);
     }
   };
 
@@ -172,7 +185,7 @@ export const HomePage: React.FC = () => {
           pagination={paginationMeta}
           onPageChange={(page) => handleFilterChange({ page })}
           onSelectBook={(book) => setSelectedBook(book)}
-          onDeleteBook={handleDeleteBook}
+          onDeleteBook={handlePromptDelete}
           onUploadClick={() => setIsUploadOpen(true)}
         />
 
@@ -191,6 +204,24 @@ export const HomePage: React.FC = () => {
           onClose={() => setSelectedBook(null)}
           onRead={handleReadBook}
           onDelete={handleDeleteBook}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={Boolean(bookToDelete)}
+          title="Delete from Library"
+          message={`Are you sure you want to delete "${bookToDelete ? formatBookTitle(bookToDelete.title) || bookToDelete.title : ''}"? This will permanently remove the book and all its bookmarks and reading progress.`}
+          confirmLabel="Delete Book"
+          isDanger
+          isLoading={deleteMutation.isPending}
+          onClose={() => setBookToDelete(null)}
+          onConfirm={async () => {
+            if (bookToDelete) {
+              const id = bookToDelete.id;
+              setBookToDelete(null);
+              await handleDeleteBook(id);
+            }
+          }}
         />
       </div>
     );

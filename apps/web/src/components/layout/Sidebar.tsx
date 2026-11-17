@@ -1,15 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Library,
-  Settings,
-  LogIn,
-  UserPlus,
-  Layers,
-  Sparkles,
-  ExternalLink,
-} from 'lucide-react';
+import { LayoutDashboard, Library, Settings, LogIn, UserPlus, Sparkles } from 'lucide-react';
 import { useUIStore } from '../../stores/ui-store';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
@@ -75,31 +66,6 @@ export const Sidebar: React.FC = () => {
                   </Link>
                 );
               })}
-            </div>
-
-            <div className="space-y-1 pt-3 border-t border-paper-200 dark:border-paper-800">
-              <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-ink-500 dark:text-paper-400">
-                Resources
-              </div>
-              <a
-                href="/#architecture"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
-              >
-                <Layers className="w-4 h-4" />
-                <span>Architecture</span>
-              </a>
-              <a
-                href="http://localhost:3000/api/docs"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <ExternalLink className="w-4 h-4" />
-                  <span>API Docs</span>
-                </div>
-              </a>
             </div>
           </div>
 

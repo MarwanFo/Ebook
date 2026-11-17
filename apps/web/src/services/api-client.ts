@@ -91,6 +91,12 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
     return await rawRequest<T>(endpoint, { ...options, headers });
   } catch (error) {
     if (error instanceof ApiError && error.statusCode === 401 && !isAuthEndpoint) {
+      const currentToken = useAuthStore.getState().accessToken;
+      // Do not trigger silent refresh if no token was attached to the request
+      if (!currentToken) {
+        throw error;
+      }
+
       try {
         if (!refreshPromise) {
           refreshPromise = (async () => {

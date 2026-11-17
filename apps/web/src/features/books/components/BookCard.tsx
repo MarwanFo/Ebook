@@ -58,9 +58,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onSelect, onDelete }) 
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (window.confirm(`Delete "${book.title}" from your library?`)) {
-            onDelete(book.id);
-          }
+          onDelete(book.id);
         }}
         className="absolute top-4 right-4 z-30 p-1.5 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm focus:opacity-100"
         title="Delete book"

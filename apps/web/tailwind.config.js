@@ -5,6 +5,22 @@ export default {
   theme: {
     extend: {
       colors: {
+        surface: {
+          DEFAULT: 'rgb(var(--bg-surface-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--bg-elevated-rgb) / <alpha-value>)',
+        },
+        border: {
+          DEFAULT: 'rgb(var(--border-color-rgb) / <alpha-value>)',
+        },
+        text: {
+          DEFAULT: 'rgb(var(--text-primary-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--text-secondary-rgb) / <alpha-value>)',
+        },
+        primary: {
+          DEFAULT: 'rgb(var(--accent-color-rgb) / <alpha-value>)',
+          hover: 'rgb(var(--accent-hover-rgb) / <alpha-value>)',
+          contrast: '#ffffff',
+        },
         paper: {
           50: '#fcfbf9',
           100: '#f7f4ed',

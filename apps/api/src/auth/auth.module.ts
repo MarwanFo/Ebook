@@ -27,7 +27,7 @@ import { MailModule } from '../mail/mail.module';
         secret:
           configService.get<string>('jwt.accessSecret') || 'default_secret_min_32_characters_here',
         signOptions: {
-          expiresIn: configService.get<string>('jwt.accessExpiresIn') || '15m',
+          expiresIn: configService.get<string>('jwt.accessExpiresIn') || '30d',
           issuer: configService.get<string>('jwt.issuer') || 'bookflow-api',
           audience: configService.get<string>('jwt.audience') || 'bookflow-client',
         },

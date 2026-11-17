@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { BookUploadResponseDto } from '@bookflow/shared-types';
+import { X, UploadCloud, AlertCircle } from 'lucide-react';
 import { useUploadBook } from '../hooks/useUploadBook';
 
 interface UploadModalProps {
@@ -14,6 +15,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadBook();
+
+  // Handle ESC key to dismiss modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !uploadMutation.isPending) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, uploadMutation.isPending]);
 
   if (!isOpen) return null;
 
@@ -64,12 +77,16 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={() => !uploadMutation.isPending && onClose()}
+    >
       <div
-        className="w-full max-w-lg bg-surface border border-border rounded-2xl shadow-xl overflow-hidden p-6 relative"
+        className="w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden p-6 relative"
         role="dialog"
         aria-modal="true"
         aria-labelledby="upload-modal-title"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">
@@ -80,17 +97,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
             type="button"
             onClick={onClose}
             disabled={uploadMutation.isPending}
-            className="text-text-muted hover:text-text p-1 rounded-lg transition-colors"
+            className="text-text-muted hover:text-text hover:bg-surface-muted p-1.5 rounded-lg transition-colors disabled:opacity-50"
             aria-label="Close modal"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -102,7 +112,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
           onClick={() => !uploadMutation.isPending && fileInputRef.current?.click()}
           className={`mt-6 border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
             isDragging
-              ? 'border-primary bg-primary/5 scale-[1.01]'
+              ? 'border-primary bg-primary/10 scale-[1.01]'
               : 'border-border hover:border-primary/60 bg-surface-muted/50'
           }`}
         >
@@ -121,14 +131,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
 
           <div className="flex flex-col items-center justify-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
+              <UploadCloud className="w-6 h-6" />
             </div>
 
             <div>
@@ -147,13 +150,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
         {/* Error Notification */}
         {errorMessage && (
           <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 text-xs flex items-center gap-2">
-            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -190,7 +187,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
             type="button"
             onClick={onClose}
             disabled={uploadMutation.isPending}
-            className="px-4 py-2 border rounded-lg text-sm text-text-muted hover:text-text border-border transition-colors"
+            className="px-4 py-2 border rounded-lg text-sm font-medium text-text-muted hover:text-text hover:bg-surface-muted border-border transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

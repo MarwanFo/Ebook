@@ -14,6 +14,14 @@ export function useAuth() {
       const meResult = await authApi.getMe();
       setAuthenticated(meResult.user, tokens.accessToken);
     } catch (error) {
+      const currentUser = useAuthStore.getState().user;
+      const currentToken = useAuthStore.getState().accessToken;
+
+      // If we already have an active user in stored state, do NOT sign out on timeout or network error!
+      if (currentUser && currentToken) {
+        return;
+      }
+
       if (error instanceof ApiError && (error.statusCode === 401 || error.statusCode === 403)) {
         setUnauthenticated();
       } else {
@@ -33,9 +41,10 @@ export function useAuth() {
     user,
     accessToken,
     status,
-    isAuthenticated: status === 'authenticated' && !!user,
-    isLoading: status === 'initializing',
-    isNetworkError: status === 'network_error',
+    isAuthenticated:
+      (status === 'authenticated' || (!!user && !!accessToken)) && status !== 'unauthenticated',
+    isLoading: status === 'initializing' && !user,
+    isNetworkError: status === 'network_error' && !user,
     retryBootstrap: bootstrap,
   };
 }

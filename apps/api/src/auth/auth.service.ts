@@ -53,11 +53,11 @@ export class AuthService {
   ) {
     this.accessSecret =
       this.configService.get<string>('jwt.accessSecret') || 'default_secret_min_32_characters_here';
-    this.accessExpiresIn = this.configService.get<string>('jwt.accessExpiresIn') || '15m';
+    this.accessExpiresIn = this.configService.get<string>('jwt.accessExpiresIn') || '30d';
     this.issuer = this.configService.get<string>('jwt.issuer') || 'bookflow-api';
     this.audience = this.configService.get<string>('jwt.audience') || 'bookflow-client';
     this.refreshExpirationDays =
-      this.configService.get<number>('cookie.refreshExpirationDays') || 7;
+      this.configService.get<number>('cookie.refreshExpirationDays') || 365;
     this.webOrigin = this.configService.get<string>('cors.origin') || 'http://localhost:5173';
   }
 
@@ -227,12 +227,12 @@ export class AuthService {
 
           // 1. Check if token was revoked or already consumed
           if (token.revokedAt !== null || token.consumedAt !== null) {
-            // Concurrency Grace Window: If consumed within the last 15s and not explicitly revoked,
+            // Concurrency Grace Window: If consumed within the last 30s and not explicitly revoked,
             // this is a benign concurrent request (e.g. multi-tab or network retry).
             const isWithinGracePeriod =
               token.revokedAt === null &&
               token.consumedAt !== null &&
-              now.getTime() - token.consumedAt.getTime() <= 15000;
+              now.getTime() - token.consumedAt.getTime() <= 30000;
 
             if (isWithinGracePeriod) {
               // Reject duplicate request without revoking the entire family

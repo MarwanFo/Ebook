@@ -2,10 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { BookQueryDto } from '@bookflow/shared-types';
 import { booksApi } from '../services/books-api';
 
-export function useBooks(query: BookQueryDto = {}) {
+export interface UseBooksOptions {
+  enabled?: boolean;
+}
+
+export function useBooks(query: BookQueryDto = {}, options: UseBooksOptions = {}) {
   return useQuery({
     queryKey: ['books', query],
     queryFn: () => booksApi.getBooks(query),
     staleTime: 30000,
+    ...options,
   });
 }

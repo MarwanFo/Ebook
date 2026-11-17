@@ -67,15 +67,32 @@ export const booksApi = {
   },
 
   async getBookFileArrayBuffer(id: string): Promise<ArrayBuffer> {
-    const token = useAuthStore.getState().accessToken;
+    let token = useAuthStore.getState().accessToken;
     const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch(`${API_BASE_URL}/books/${id}/file`, {
+    let response = await fetch(`${API_BASE_URL}/books/${id}/file`, {
       credentials: 'include',
       headers,
     });
+
+    if (response.status === 401) {
+      try {
+        const refreshed = await request<{ accessToken: string }>('/auth/refresh', {
+          method: 'POST',
+        });
+        token = refreshed.accessToken;
+        headers['Authorization'] = `Bearer ${token}`;
+        response = await fetch(`${API_BASE_URL}/books/${id}/file`, {
+          credentials: 'include',
+          headers,
+        });
+      } catch {
+        // Fall through to response.ok check
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`Failed to load book content: ${response.status} ${response.statusText}`);
     }
