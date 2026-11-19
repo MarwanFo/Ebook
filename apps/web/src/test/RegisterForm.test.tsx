@@ -93,4 +93,39 @@ describe('RegisterForm', () => {
       });
     });
   });
+
+  it('includes populated honeypot botField when a bot fills out the hidden trap', async () => {
+    const mockSession = {
+      user: {
+        id: 'u-bot',
+        email: 'bot@example.com',
+        displayName: 'Bot',
+        avatarUrl: null,
+        role: UserRole.USER,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      accessToken: 'access.jwt.token',
+    };
+
+    vi.mocked(authApi.register).mockResolvedValueOnce(mockSession);
+
+    renderComponent();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/Email Address/i), 'bot@example.com');
+    await user.type(screen.getByLabelText(/Passphrase/i), 'super-secure-passphrase-12345');
+    await user.type(screen.getByLabelText(/Leave this field blank/i), 'automated spam script');
+
+    await user.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    await waitFor(() => {
+      expect(authApi.register).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'bot@example.com',
+          botField: 'automated spam script',
+        }),
+      );
+    });
+  });
 });

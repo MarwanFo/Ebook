@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useRegister } from '../hooks/useRegister';
+import { TurnstileWidget } from './TurnstileWidget';
 import { Button } from '../../../components/common/Button';
 import {
   AlertCircle,
@@ -20,6 +21,8 @@ export const RegisterForm: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [botField, setBotField] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const registerMutation = useRegister();
@@ -69,6 +72,8 @@ export const RegisterForm: React.FC = () => {
         email: trimmedEmail,
         password,
         displayName: displayName.trim() || undefined,
+        botField: botField || undefined,
+        turnstileToken: turnstileToken || undefined,
       });
 
       navigate('/', { replace: true });
@@ -237,6 +242,30 @@ export const RegisterForm: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Invisible Honeypot Field (Bot Trap) */}
+            <div
+              className="opacity-0 absolute -z-50 pointer-events-none select-none h-0 w-0 overflow-hidden"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
+              <label htmlFor="botField">Leave this field blank</label>
+              <input
+                id="botField"
+                name="botField"
+                type="text"
+                value={botField}
+                onChange={(e) => setBotField(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Cloudflare Turnstile Challenge (Renders when VITE_TURNSTILE_SITE_KEY is configured) */}
+            <TurnstileWidget
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+            />
 
             <div className="pt-2">
               <Button

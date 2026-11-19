@@ -130,6 +130,22 @@ describe('AuthService', () => {
       expect(typeof result.rawRefreshToken).toBe('string');
       expect(result.rawRefreshToken.length).toBe(64);
     });
+
+    it('should reject registration if honeypot botField is populated', async () => {
+      await expect(
+        service.register(
+          {
+            email: 'bot@example.com',
+            password: 'super-secure-passphrase-12345',
+            botField: 'I am a spam bot',
+          },
+          '127.0.0.1',
+          'Bot-Agent',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('login', () => {

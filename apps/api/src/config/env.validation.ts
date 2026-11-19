@@ -135,6 +135,10 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CLOUDINARY_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

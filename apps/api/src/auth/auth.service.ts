@@ -38,6 +38,7 @@ export class AuthService {
   private readonly audience: string;
   private readonly refreshExpirationDays: number;
   private readonly webOrigin: string;
+  private readonly turnstileSecretKey?: string;
 
   // Pre-computed dummy Argon2id hash for bounded execution on non-existent accounts (anti-enumeration)
   private readonly DUMMY_HASH =
@@ -59,6 +60,52 @@ export class AuthService {
     this.refreshExpirationDays =
       this.configService.get<number>('cookie.refreshExpirationDays') || 365;
     this.webOrigin = this.configService.get<string>('cors.origin') || 'http://localhost:5173';
+    this.turnstileSecretKey = this.configService.get<string>('turnstile.secretKey');
+  }
+
+  /**
+   * Verifies a Cloudflare Turnstile token against Cloudflare's siteverify endpoint.
+   */
+  async verifyTurnstile(token?: string, remoteIp?: string): Promise<boolean> {
+    if (!this.turnstileSecretKey) {
+      return true;
+    }
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append('secret', this.turnstileSecretKey);
+      formData.append('response', token);
+      if (remoteIp) {
+        formData.append('remoteip', remoteIp);
+      }
+
+      const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString(),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Turnstile API returned non-OK status: ${response.status}`);
+        return false;
+      }
+
+      const outcome = (await response.json()) as { success: boolean; 'error-codes'?: string[] };
+      if (!outcome.success) {
+        this.logger.warn(
+          `Turnstile challenge failed: ${JSON.stringify(outcome['error-codes'] || [])}`,
+        );
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      this.logger.error(`Error during Turnstile verification: ${(err as Error).message}`);
+      return false;
+    }
   }
 
   /**
@@ -127,6 +174,24 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<{ session: AuthSessionDto; rawRefreshToken: string }> {
+    // 1. Honeypot check: If the hidden bot field is filled, immediately reject
+    if (dto.botField && dto.botField.trim().length > 0) {
+      this.logger.warn(`Bot registration blocked by honeypot field from IP: ${ipAddress}`);
+      throw new BadRequestException('Registration request verification failed.');
+    }
+
+    // 2. Cloudflare Turnstile verification (when secret key is configured and not running in test suite)
+    const isTest = this.configService.get<string>('NODE_ENV') === 'test';
+    if (this.turnstileSecretKey && !isTest) {
+      if (!dto.turnstileToken) {
+        throw new BadRequestException('Security challenge token is required.');
+      }
+      const isValid = await this.verifyTurnstile(dto.turnstileToken, ipAddress);
+      if (!isValid) {
+        throw new BadRequestException('Security challenge verification failed. Please try again.');
+      }
+    }
+
     const user = await this.usersService.create({
       email: dto.email,
       passwordPlain: dto.password,

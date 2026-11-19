@@ -29,4 +29,20 @@ export class RegisterDto implements IRegisterDto {
   @IsString()
   @IsOptional()
   displayName?: string;
+
+  @ApiProperty({
+    description: 'Honeypot field for bot detection (must be empty)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  botField?: string;
+
+  @ApiProperty({
+    description: 'Cloudflare Turnstile verification challenge token',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  turnstileToken?: string;
 }

@@ -30,6 +30,8 @@ export interface RegisterDto {
   email: string;
   password: string;
   displayName?: string;
+  botField?: string;
+  turnstileToken?: string;
 }
 
 export interface LoginDto {

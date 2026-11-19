@@ -54,4 +54,7 @@ export default () => ({
       url: process.env.CLOUDINARY_URL,
     },
   },
+  turnstile: {
+    secretKey: process.env.TURNSTILE_SECRET_KEY,
+  },
 });
