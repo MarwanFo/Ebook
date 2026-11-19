@@ -12,6 +12,7 @@ describe('ProtectedRoute', () => {
     displayName: 'Reader',
     avatarUrl: null,
     role: UserRole.USER,
+    isEmailVerified: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -26,6 +27,7 @@ describe('ProtectedRoute', () => {
       <MemoryRouter initialEntries={[initialRoute]}>
         <Routes>
           <Route path="/login" element={<div>Login Page</div>} />
+          <Route path="/verify-email" element={<div>Verify Email Page</div>} />
           <Route
             path="/protected"
             element={
@@ -67,7 +69,7 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Secret Protected Content')).not.toBeInTheDocument();
   });
 
-  it('renders children content when authenticated', () => {
+  it('renders children content when authenticated and email verified', () => {
     useAuthStore.setState({
       status: 'authenticated',
       user: mockUser,
@@ -78,5 +80,18 @@ describe('ProtectedRoute', () => {
 
     expect(screen.getByText('Secret Protected Content')).toBeInTheDocument();
     expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
+  });
+
+  it('redirects to /verify-email when authenticated but email is not verified', () => {
+    useAuthStore.setState({
+      status: 'authenticated',
+      user: { ...mockUser, isEmailVerified: false },
+      accessToken: 'valid.token',
+    });
+
+    renderWithRouter();
+
+    expect(screen.getByText('Verify Email Page')).toBeInTheDocument();
+    expect(screen.queryByText('Secret Protected Content')).not.toBeInTheDocument();
   });
 });

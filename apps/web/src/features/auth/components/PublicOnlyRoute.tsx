@@ -7,7 +7,7 @@ interface PublicOnlyRouteProps {
 }
 
 export const PublicOnlyRoute: React.FC<PublicOnlyRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -22,6 +22,9 @@ export const PublicOnlyRoute: React.FC<PublicOnlyRouteProps> = ({ children }) =>
   }
 
   if (isAuthenticated) {
+    if (user && !user.isEmailVerified) {
+      return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email)}`} replace />;
+    }
     const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }

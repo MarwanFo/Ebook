@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../features/auth/services/auth-api';
 import { useAuthStore } from '../features/auth/stores/auth-store';
 import { OtpInput } from '../features/auth/components/OtpInput';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 export const VerifyEmailPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const emailParam = searchParams.get('email');
@@ -272,9 +273,22 @@ export const VerifyEmailPage: React.FC = () => {
             </div>
 
             <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-text-muted">
-              <Link to="/login" className="hover:text-primary transition-colors">
-                Back to Sign in
-              </Link>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    useAuthStore.getState().clear();
+                    navigate('/login');
+                  }}
+                  className="hover:text-primary transition-colors cursor-pointer"
+                >
+                  Sign out / Switch account
+                </button>
+              ) : (
+                <Link to="/login" className="hover:text-primary transition-colors">
+                  Back to Sign in
+                </Link>
+              )}
               <Link to="/" className="hover:text-primary transition-colors">
                 Back to Home
               </Link>

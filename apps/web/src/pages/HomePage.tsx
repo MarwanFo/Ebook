@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import {
   BookOpen,
   ShieldCheck,
@@ -94,8 +94,12 @@ export const HomePage: React.FC = () => {
     navigate(`/reader/${bookId}`);
   };
 
-  // If user is logged in, present the Ebook Library Catalog
+  // If user is logged in, verify email before granting dashboard access
   if (isAuthenticated) {
+    if (user && !user.isEmailVerified) {
+      return <Navigate to={`/verify-email?email=${encodeURIComponent(user.email)}`} replace />;
+    }
+
     return (
       <div className="space-y-8 animate-fade-in pb-12 p-4 sm:p-6 lg:p-8">
         {/* Unverified Email Alert Banner */}

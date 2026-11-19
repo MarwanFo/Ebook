@@ -29,10 +29,17 @@ export const LoginForm: React.FC = () => {
     }
 
     try {
-      await loginMutation.mutateAsync({
+      const session = await loginMutation.mutateAsync({
         email: trimmedEmail,
         password,
       });
+
+      if (!session.user.isEmailVerified) {
+        navigate(`/verify-email?email=${encodeURIComponent(session.user.email)}`, {
+          replace: true,
+        });
+        return;
+      }
 
       const from =
         (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';

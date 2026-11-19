@@ -96,7 +96,8 @@ export const RegisterForm: React.FC = () => {
         turnstileToken: turnstileToken || undefined,
       });
 
-      navigate('/', { replace: true });
+      // Verification is required before entering the dashboard
+      navigate(`/verify-email?email=${encodeURIComponent(trimmedEmail)}`, { replace: true });
     } catch (err: unknown) {
       setFormError(
         err instanceof Error ? err.message : 'Registration failed. Please check your details.',
