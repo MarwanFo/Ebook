@@ -3,14 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { authApi } from '../features/auth/services/auth-api';
 import { useAuthStore } from '../features/auth/stores/auth-store';
 import { Button } from '../components/common/Button';
-import {
-  CheckCircle2,
-  AlertCircle,
-  Mail,
-  Loader2,
-  ArrowRight,
-  Send,
-} from 'lucide-react';
+import { CheckCircle2, AlertCircle, Mail, Loader2, ArrowRight, Send } from 'lucide-react';
 
 export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();

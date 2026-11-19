@@ -21,6 +21,8 @@ export const RegisterForm: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [botField, setBotField] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -28,8 +30,10 @@ export const RegisterForm: React.FC = () => {
   const registerMutation = useRegister();
   const navigate = useNavigate();
 
-  // Unicode code points count
+  // Unicode code points count & entropy
   const charCount = [...password].length;
+  const uniqueCount = new Set([...password]).size;
+  const isTooRepetitive = charCount >= 8 && uniqueCount <= 3;
   const isLengthSufficient = charCount >= 15;
   const hasSpacesOrWords = password.includes(' ') || charCount >= 20;
 
@@ -38,7 +42,11 @@ export const RegisterForm: React.FC = () => {
   let strengthColor = 'bg-red-500';
   let progressWidth = 'w-1/4';
 
-  if (charCount >= 15 && hasSpacesOrWords) {
+  if (isTooRepetitive) {
+    strengthLabel = 'Too repetitive';
+    strengthColor = 'bg-red-500';
+    progressWidth = 'w-1/4';
+  } else if (charCount >= 15 && hasSpacesOrWords) {
     strengthLabel = 'Strong passphrase';
     strengthColor = 'bg-emerald-500';
     progressWidth = 'w-full';
@@ -64,6 +72,18 @@ export const RegisterForm: React.FC = () => {
 
     if (charCount < 15) {
       setFormError('Password must be at least 15 Unicode characters long.');
+      return;
+    }
+
+    if (isTooRepetitive) {
+      setFormError(
+        'Passphrase contains too many repetitive characters. Please use a more diverse passphrase.',
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFormError('Passphrases do not match. Please verify your passphrase.');
       return;
     }
 
@@ -241,6 +261,60 @@ export const RegisterForm: React.FC = () => {
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-xs font-semibold text-text mb-1.5"
+              >
+                Confirm Passphrase
+              </label>
+              <div className="relative rounded-xl shadow-xs">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Lock className="h-4 w-4 text-text-muted" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="block w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-10 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="Re-enter your passphrase..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-text-muted hover:text-text transition-colors"
+                  aria-label={showConfirmPassword ? 'Hide value' : 'Show value'}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              {/* Confirm Passphrase Matching Indicator */}
+              {confirmPassword.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs transition-all">
+                  {password === confirmPassword ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+                      <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                      Passphrases match
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                      Passphrases do not match
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Invisible Honeypot Field (Bot Trap) */}

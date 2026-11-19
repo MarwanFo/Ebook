@@ -40,7 +40,8 @@ describe('RegisterForm', () => {
 
     expect(screen.getByLabelText(/Display Name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Passphrase/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Passphrase$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Confirm Passphrase/i)).toBeInTheDocument();
     expect(screen.getByText(/Minimum 15 characters/i)).toBeInTheDocument();
   });
 
@@ -49,11 +50,50 @@ describe('RegisterForm', () => {
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText(/Email Address/i), 'newuser@example.com');
-    await user.type(screen.getByLabelText(/Passphrase/i), 'short-pass-123'); // 14 chars
+    await user.type(screen.getByLabelText(/^Passphrase$/i), 'short-pass-123'); // 14 chars
+    await user.type(screen.getByLabelText(/Confirm Passphrase/i), 'short-pass-123');
     await user.click(screen.getByRole('button', { name: /Create Account/i }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(/at least 15 Unicode characters/i);
     expect(authApi.register).not.toHaveBeenCalled();
+  });
+
+  it('rejects passphrases with repetitive trivial characters', async () => {
+    renderComponent();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/Email Address/i), 'repeat@example.com');
+    await user.type(screen.getByLabelText(/^Passphrase$/i), 'aaaaaaaaaaaaaaaa'); // 16 chars, 1 unique
+    await user.type(screen.getByLabelText(/Confirm Passphrase/i), 'aaaaaaaaaaaaaaaa');
+    await user.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/too many repetitive characters/i);
+    expect(authApi.register).not.toHaveBeenCalled();
+  });
+
+  it('shows live matching indicator and rejects submission when passphrases do not match', async () => {
+    renderComponent();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/Email Address/i), 'mismatch@example.com');
+    await user.type(screen.getByLabelText(/^Passphrase$/i), 'correct horse battery staple 2026');
+    await user.type(screen.getByLabelText(/Confirm Passphrase/i), 'different horse battery staple');
+
+    expect(screen.getByText(/Passphrases do not match/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Passphrases do not match/i);
+    expect(authApi.register).not.toHaveBeenCalled();
+
+    // Now fix confirm passphrase to match
+    await user.clear(screen.getByLabelText(/Confirm Passphrase/i));
+    await user.type(
+      screen.getByLabelText(/Confirm Passphrase/i),
+      'correct horse battery staple 2026',
+    );
+
+    expect(screen.getByText(/Passphrases match/i)).toBeInTheDocument();
   });
 
   it('accepts passphrases with spaces and unicode emojis (>=15 chars) and submits successfully', async () => {
@@ -80,7 +120,9 @@ describe('RegisterForm', () => {
 
     // Paste full passphrase with Unicode emojis & spaces
     const validPassphrase = 'my bookflow adventure 📚🌟';
-    await user.click(screen.getByLabelText(/Passphrase/i));
+    await user.click(screen.getByLabelText(/^Passphrase$/i));
+    await user.paste(validPassphrase);
+    await user.click(screen.getByLabelText(/Confirm Passphrase/i));
     await user.paste(validPassphrase);
 
     await user.click(screen.getByRole('button', { name: /Create Account/i }));
@@ -113,8 +155,10 @@ describe('RegisterForm', () => {
     renderComponent();
     const user = userEvent.setup();
 
+    const validPassphrase = 'super-secure-passphrase-12345';
     await user.type(screen.getByLabelText(/Email Address/i), 'bot@example.com');
-    await user.type(screen.getByLabelText(/Passphrase/i), 'super-secure-passphrase-12345');
+    await user.type(screen.getByLabelText(/^Passphrase$/i), validPassphrase);
+    await user.type(screen.getByLabelText(/Confirm Passphrase/i), validPassphrase);
     await user.type(screen.getByLabelText(/Leave this field blank/i), 'automated spam script');
 
     await user.click(screen.getByRole('button', { name: /Create Account/i }));

@@ -7,6 +7,11 @@ import { PrismaService } from '../database/prisma.service';
 import { UsersService } from '../users/users.service';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { MailService } from '../mail/mail.interface';
+import { isPasswordBreached } from './utils/hibp-pwned-checker';
+
+jest.mock('./utils/hibp-pwned-checker', () => ({
+  isPasswordBreached: jest.fn().mockResolvedValue(false),
+}));
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -162,6 +167,23 @@ describe('AuthService', () => {
           {
             email: 'burner@mailinator.com',
             password: 'super-secure-passphrase-12345',
+          },
+          '127.0.0.1',
+          'Jest-Test',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject registration if password has been compromised in public breaches', async () => {
+      (isPasswordBreached as jest.Mock).mockResolvedValueOnce(true);
+
+      await expect(
+        service.register(
+          {
+            email: 'breached@example.com',
+            password: 'breached-password-found-in-pwned-db',
           },
           '127.0.0.1',
           'Jest-Test',

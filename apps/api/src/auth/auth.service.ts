@@ -15,6 +15,7 @@ import { PasswordHasherService } from './services/password-hasher.service';
 import { MAIL_SERVICE, MailService } from '../mail/mail.interface';
 import { validatePasswordPolicy } from './utils/password-validator';
 import { isDisposableEmail } from './utils/disposable-email-validator';
+import { isPasswordBreached } from './utils/hibp-pwned-checker';
 import {
   AuthSessionDto,
   ChangePasswordDto,
@@ -199,6 +200,17 @@ export class AuthService {
       if (!isValid) {
         throw new BadRequestException('Security challenge verification failed. Please try again.');
       }
+    }
+
+    // 4. HaveIBeenPwned k-Anonymity breach check
+    const isBreached = await isPasswordBreached(dto.password);
+    if (isBreached) {
+      this.logger.warn(
+        `Registration blocked: passphrase found in public breaches from IP: ${ipAddress}`,
+      );
+      throw new BadRequestException(
+        'This passphrase has appeared in known public data breaches. Please choose a different, more unique passphrase.',
+      );
     }
 
     const user = await this.usersService.create({
@@ -454,6 +466,13 @@ export class AuthService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<MessageResponseDto> {
     validatePasswordPolicy(dto.newPassword);
 
+    const isBreached = await isPasswordBreached(dto.newPassword);
+    if (isBreached) {
+      throw new BadRequestException(
+        'This passphrase has appeared in known public data breaches. Please choose a different, more unique passphrase.',
+      );
+    }
+
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User account not found.');
@@ -558,6 +577,13 @@ export class AuthService {
    */
   async resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto> {
     validatePasswordPolicy(dto.newPassword);
+
+    const isBreached = await isPasswordBreached(dto.newPassword);
+    if (isBreached) {
+      throw new BadRequestException(
+        'This passphrase has appeared in known public data breaches. Please choose a different, more unique passphrase.',
+      );
+    }
 
     const tokenHash = this.hashToken(dto.token);
     const now = new Date();

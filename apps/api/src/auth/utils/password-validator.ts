@@ -55,4 +55,12 @@ export function validatePasswordPolicy(password: string): void {
       'This password is too common or easily guessed. Please choose a more unique passphrase.',
     );
   }
+
+  // 4. Block highly repetitive character patterns
+  const uniqueChars = new Set([...password]).size;
+  if (codePointsCount >= 15 && uniqueChars <= 3) {
+    throw new BadRequestException(
+      'Passphrase contains too many repetitive characters. Please use a more diverse passphrase.',
+    );
+  }
 }

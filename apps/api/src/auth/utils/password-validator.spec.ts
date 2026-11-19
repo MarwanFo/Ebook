@@ -39,4 +39,9 @@ describe('Password Validator (Unicode Code Point & Byte Limit Policy)', () => {
     expect(() => validatePasswordPolicy('password12345678')).toThrow(BadRequestException);
     expect(() => validatePasswordPolicy('123456789012345')).toThrow(BadRequestException);
   });
+
+  it('should reject highly repetitive characters', () => {
+    expect(() => validatePasswordPolicy('aaaaaaaaaaaaaaaa')).toThrow(BadRequestException);
+    expect(() => validatePasswordPolicy('abababababababab')).toThrow(BadRequestException);
+  });
 });
