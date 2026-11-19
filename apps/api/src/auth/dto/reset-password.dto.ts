@@ -1,15 +1,31 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 import { ResetPasswordDto as IResetPasswordDto } from '@bookflow/shared-types';
 
 export class ResetPasswordDto implements IResetPasswordDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'd9f2e345...',
-    description: 'Cryptographic password reset token',
+    description: 'Cryptographic password reset token from URL link',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Reset token is required.' })
-  token: string;
+  token?: string;
+
+  @ApiPropertyOptional({
+    description: 'User email address (required when resetting via 6-digit OTP)',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Must be a valid email address.' })
+  email?: string;
+
+  @ApiPropertyOptional({
+    example: '123456',
+    description: '6-digit numeric password reset OTP',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6, { message: 'OTP must be exactly 6 digits.' })
+  otp?: string;
 
   @ApiProperty({
     example: 'my-new-secure-passphrase-with-spaces',

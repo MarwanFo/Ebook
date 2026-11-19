@@ -8,6 +8,7 @@ import {
   RegisterDto,
   ResetPasswordDto,
   UserProfileDto,
+  VerifyEmailDto,
 } from '@bookflow/shared-types';
 import { request } from '../../../services/api-client';
 
@@ -57,10 +58,10 @@ export const authApi = {
       body: JSON.stringify(dto),
     }),
 
-  verifyEmail: (token: string): Promise<MessageResponseDto> =>
+  verifyEmail: (payload: string | VerifyEmailDto): Promise<MessageResponseDto> =>
     request<MessageResponseDto>('/auth/verify-email', {
       method: 'POST',
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(typeof payload === 'string' ? { token: payload } : payload),
     }),
 
   resendVerification: (email: string): Promise<MessageResponseDto> =>

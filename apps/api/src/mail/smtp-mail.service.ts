@@ -41,13 +41,43 @@ export class SmtpMailService implements MailService {
         from: this.fromAddress,
         to: input.email,
         subject: 'Reset your BookFlow password',
-        text: `You recently requested to reset your password for your BookFlow account.\n\nPlease visit the link below to set a new password:\n${input.resetUrl}\n\nThis link will expire at ${input.expiresAt.toISOString()}.\nIf you did not request a password reset, please ignore this email.`,
+        text: `You recently requested to reset your password for your BookFlow account.\n\n${
+          input.otp ? `Your 6-Digit Verification Code: ${input.otp}\n\n` : ''
+        }Please visit the link below to set a new password:\n${input.resetUrl}\n\nThis code and link will expire at ${input.expiresAt.toISOString()}.\nIf you did not request a password reset, please ignore this email.`,
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>BookFlow Password Reset</h2>
-            <p>You recently requested to reset your password for your BookFlow account.</p>
-            <p><a href="${input.resetUrl}" style="display: inline-block; padding: 10px 20px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;">Reset Password</a></p>
-            <p style="color: #6b7280; font-size: 12px;">This link will expire at ${input.expiresAt.toISOString()}. If you did not request this, please ignore this email.</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+            <div style="margin-bottom: 24px;">
+              <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 8px 0;">Reset Your BookFlow Password 🔑</h2>
+              <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
+                You recently requested to reset your password for your BookFlow account.
+              </p>
+            </div>
+            ${
+              input.otp
+                ? `
+            <div style="text-align: center; margin: 28px 0;">
+              <span style="font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Single-Use 6-Digit Code</span>
+              <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #c25e00; font-family: monospace; background: #fff7ed; padding: 14px 28px; border-radius: 12px; display: inline-block; margin-top: 8px; border: 1px dashed #fdba74;">
+                ${input.otp}
+              </div>
+              <p style="font-size: 12px; color: #9ca3af; margin-top: 6px;">Valid for 15 minutes</p>
+            </div>
+            `
+                : ''
+            }
+            <div style="margin: 24px 0; text-align: center;">
+              <a href="${input.resetUrl}" style="display: inline-block; background-color: #c25e00; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                Reset Password Directly
+              </a>
+            </div>
+            <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin: 0 0 16px 0;">
+              Or copy and paste this link into your browser:<br />
+              <a href="${input.resetUrl}" style="color: #c25e00; word-break: break-all;">${input.resetUrl}</a>
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+            <p style="color: #9ca3af; font-size: 11px; margin: 0;">
+              This link will expire at ${input.expiresAt.toISOString()}. If you did not request this, please ignore this email.
+            </p>
           </div>
         `,
       });
@@ -113,7 +143,9 @@ export class SmtpMailService implements MailService {
         from: this.fromAddress,
         to: input.email,
         subject: 'Verify your BookFlow email address',
-        text: `Welcome to BookFlow!\n\nPlease verify your email address by visiting the link below:\n${input.verificationUrl}\n\nThis verification link expires at ${input.expiresAt.toISOString()}.\nIf you did not sign up for BookFlow, please disregard this email.`,
+        text: `Welcome to BookFlow!\n\n${
+          input.otp ? `Your 6-Digit Verification Code: ${input.otp}\n\n` : ''
+        }Please verify your email address by visiting the link below:\n${input.verificationUrl}\n\nThis code and verification link expire at ${input.expiresAt.toISOString()}.\nIf you did not sign up for BookFlow, please disregard this email.`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
             <div style="margin-bottom: 24px;">
@@ -122,9 +154,22 @@ export class SmtpMailService implements MailService {
                 Thank you for joining BookFlow. Please verify your email address to activate your reading sanctuary and secure your account.
               </p>
             </div>
-            <div style="margin: 28px 0; text-align: center;">
+            ${
+              input.otp
+                ? `
+            <div style="text-align: center; margin: 28px 0;">
+              <span style="font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Single-Use 6-Digit Code</span>
+              <div style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #c25e00; font-family: monospace; background: #fff7ed; padding: 14px 28px; border-radius: 12px; display: inline-block; margin-top: 8px; border: 1px dashed #fdba74;">
+                ${input.otp}
+              </div>
+              <p style="font-size: 12px; color: #9ca3af; margin-top: 6px;">Valid for 15 minutes</p>
+            </div>
+            `
+                : ''
+            }
+            <div style="margin: 24px 0; text-align: center;">
               <a href="${input.verificationUrl}" style="display: inline-block; background-color: #c25e00; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 28px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                Verify Email Address
+                Verify Email Directly
               </a>
             </div>
             <p style="color: #6b7280; font-size: 12px; line-height: 1.5; margin: 0 0 16px 0;">

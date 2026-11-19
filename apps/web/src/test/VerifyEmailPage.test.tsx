@@ -87,4 +87,29 @@ describe('VerifyEmailPage', () => {
       expect(screen.getByText(/Verification link sent!/i)).toBeInTheDocument();
     });
   });
+
+  it('submits 6-digit OTP verification successfully', async () => {
+    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({
+      message: 'Email verified successfully.',
+    });
+
+    renderComponent('/verify-email');
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText(/Email Address/i), 'reader@example.com');
+    await user.type(screen.getByLabelText('Digit 1'), '1');
+    await user.type(screen.getByLabelText('Digit 2'), '2');
+    await user.type(screen.getByLabelText('Digit 3'), '3');
+    await user.type(screen.getByLabelText('Digit 4'), '4');
+    await user.type(screen.getByLabelText('Digit 5'), '5');
+    await user.type(screen.getByLabelText('Digit 6'), '6');
+
+    await waitFor(() => {
+      expect(authApi.verifyEmail).toHaveBeenCalledWith({
+        email: 'reader@example.com',
+        otp: '123456',
+      });
+      expect(screen.getByText(/Email Verified!/i)).toBeInTheDocument();
+    });
+  });
 });

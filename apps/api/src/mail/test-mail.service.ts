@@ -16,7 +16,7 @@ export class TestMailService implements MailService {
     this.sentEmails.push({
       to: input.email,
       subject: 'Reset your BookFlow password',
-      text: `Reset link: ${input.resetUrl}`,
+      text: `Reset link: ${input.resetUrl}${input.otp ? ` | OTP: ${input.otp}` : ''}`,
       timestamp: new Date(),
     });
   }
@@ -33,7 +33,7 @@ export class TestMailService implements MailService {
     this.sentEmails.push({
       to: input.email,
       subject: 'Verify your BookFlow email address',
-      text: `Verification link: ${input.verificationUrl}`,
+      text: `Verification link: ${input.verificationUrl}${input.otp ? ` | OTP: ${input.otp}` : ''}`,
       timestamp: new Date(),
     });
   }

@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useResetPassword } from '../hooks/useResetPassword';
+import { OtpInput } from './OtpInput';
 import { Button } from '../../../components/common/Button';
-import { AlertCircle, CheckCircle2, Lock, ArrowRight, KeyRound } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Lock, ArrowRight, KeyRound, Mail } from 'lucide-react';
 
 export const ResetPasswordForm: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
+  const emailParam = searchParams.get('email') || '';
 
+  const [email, setEmail] = useState(emailParam);
+  const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -23,8 +27,14 @@ export const ResetPasswordForm: React.FC = () => {
     setFormError(null);
 
     if (!token) {
-      setFormError('Invalid or missing password reset token. Please request a new link.');
-      return;
+      if (!email.trim()) {
+        setFormError('Please enter your email address.');
+        return;
+      }
+      if (otp.trim().length !== 6) {
+        setFormError('Please enter the full 6-digit reset code.');
+        return;
+      }
     }
 
     if (charCount < 15) {
@@ -38,36 +48,27 @@ export const ResetPasswordForm: React.FC = () => {
     }
 
     try {
-      await resetMutation.mutateAsync({
-        token,
-        newPassword: password,
-      });
+      if (token) {
+        await resetMutation.mutateAsync({
+          token,
+          newPassword: password,
+        });
+      } else {
+        await resetMutation.mutateAsync({
+          email: email.trim(),
+          otp: otp.trim(),
+          newPassword: password,
+        });
+      }
       setIsSuccess(true);
     } catch (err: unknown) {
       setFormError(
-        err instanceof Error ? err.message : 'Failed to reset password. The link may have expired.',
+        err instanceof Error
+          ? err.message
+          : 'Failed to reset password. The code or link may have expired.',
       );
     }
   };
-
-  if (!token) {
-    return (
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-xl animate-fade-in">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-          <AlertCircle className="h-7 w-7" />
-        </div>
-        <h2 className="text-2xl font-bold font-serif text-text">Invalid Reset Link</h2>
-        <p className="mt-2 text-sm text-text-muted leading-relaxed">
-          This password reset link is invalid or has expired. Please request a new one.
-        </p>
-        <div className="mt-6 pt-4 border-t border-border">
-          <Link to="/forgot-password">
-            <Button variant="primary">Request New Link</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   if (isSuccess) {
     return (
@@ -97,9 +98,13 @@ export const ResetPasswordForm: React.FC = () => {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
           <KeyRound className="h-6 w-6" />
         </div>
-        <h2 className="text-2xl font-bold font-serif tracking-tight text-text">Set New Password</h2>
+        <h2 className="text-2xl font-bold font-serif tracking-tight text-text">
+          {token ? 'Set New Password' : 'Reset Password with Code'}
+        </h2>
         <p className="mt-2 text-sm text-text-muted leading-relaxed">
-          Please enter your new secure passphrase (at least 15 characters).
+          {token
+            ? 'Please enter your new secure passphrase (at least 15 characters).'
+            : 'Enter your email address, the 6-digit code from your email, and your new passphrase.'}
         </p>
       </div>
 
@@ -114,6 +119,46 @@ export const ResetPasswordForm: React.FC = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {!token && (
+          <>
+            <div>
+              <label htmlFor="reset-email" className="block text-xs font-semibold text-text mb-1.5">
+                Email Address
+              </label>
+              <div className="relative rounded-xl shadow-xs">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  <Mail className="h-4 w-4 text-text-muted" />
+                </div>
+                <input
+                  id="reset-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-text placeholder:text-text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="reader@example.com"
+                />
+              </div>
+            </div>
+
+            <div className="pt-1 pb-1">
+              <label className="block text-xs font-semibold text-text mb-2 text-center">
+                6-Digit Reset Code
+              </label>
+              <OtpInput
+                value={otp}
+                onChange={(val) => {
+                  setOtp(val);
+                  if (formError) setFormError(null);
+                }}
+                disabled={resetMutation.isPending}
+              />
+            </div>
+          </>
+        )}
+
         <div>
           <label htmlFor="password" className="block text-xs font-semibold text-text mb-1.5">
             New Passphrase
@@ -175,6 +220,15 @@ export const ResetPasswordForm: React.FC = () => {
           </Button>
         </div>
       </form>
+
+      <div className="mt-6 text-center border-t border-border pt-4 flex items-center justify-between text-xs text-text-muted">
+        <Link to="/forgot-password" className="hover:text-primary transition-colors">
+          Request New Code
+        </Link>
+        <Link to="/login" className="hover:text-primary transition-colors">
+          Back to Sign In
+        </Link>
+      </div>
     </div>
   );
 };

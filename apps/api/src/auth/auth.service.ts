@@ -25,6 +25,7 @@ import {
   MessageResponseDto,
   RegisterDto,
   ResetPasswordDto,
+  VerifyEmailDto,
 } from '@bookflow/shared-types';
 
 export interface TokenRotationResult {
@@ -123,6 +124,20 @@ export class AuthService {
    */
   generateRawToken(): string {
     return crypto.randomBytes(32).toString('hex');
+  }
+
+  /**
+   * Generates a cryptographically secure 6-digit numeric OTP.
+   */
+  generateOtp(): string {
+    return crypto.randomInt(100000, 1000000).toString();
+  }
+
+  /**
+   * Hashes an OTP combined with the user ID using SHA-256 (prevents rainbow-table attacks).
+   */
+  hashOtp(userId: string, otp: string): string {
+    return crypto.createHash('sha256').update(`${userId}:${otp.trim()}`).digest('hex');
   }
 
   /**
@@ -250,13 +265,14 @@ export class AuthService {
 
     // Issue cryptographic verification token and dispatch verification email
     try {
-      const rawVerifyToken = await this.createEmailVerificationToken(user.id);
-      const verificationUrl = `${this.webOrigin}/verify-email?token=${rawVerifyToken}`;
+      const { rawToken, otp } = await this.createEmailVerificationToken(user.id);
+      const verificationUrl = `${this.webOrigin}/verify-email?token=${rawToken}`;
       this.mailService
         .sendEmailVerification({
           email: user.email,
           verificationUrl,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          otp,
         })
         .catch((err) =>
           this.logger.error(`Failed to send email verification: ${(err as Error).message}`),
@@ -563,6 +579,8 @@ export class AuthService {
 
     const rawToken = this.generateRawToken();
     const tokenHash = this.hashToken(rawToken);
+    const otp = this.generateOtp();
+    const otpHash = this.hashOtp(user.id, otp);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15-minute expiration
 
@@ -579,6 +597,8 @@ export class AuthService {
         data: {
           userId: user.id,
           tokenHash,
+          otpHash,
+          attempts: 0,
           expiresAt,
         },
       });
@@ -592,6 +612,7 @@ export class AuthService {
         email: user.email,
         resetUrl,
         expiresAt,
+        otp,
       })
       .catch((err) => this.logger.error(`Failed to send password reset email: ${err.message}`));
 
@@ -599,7 +620,7 @@ export class AuthService {
   }
 
   /**
-   * Resets user password using single-use cryptographic token and revokes all active sessions.
+   * Resets user password using single-use cryptographic token or 6-digit OTP and revokes all active sessions.
    */
   async resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto> {
     validatePasswordPolicy(dto.newPassword);
@@ -611,13 +632,58 @@ export class AuthService {
       );
     }
 
-    const tokenHash = this.hashToken(dto.token);
     const now = new Date();
+    let resetToken;
 
-    const resetToken = await this.prisma.passwordResetToken.findUnique({
-      where: { tokenHash },
-      include: { user: true },
-    });
+    if (dto.token) {
+      const tokenHash = this.hashToken(dto.token.trim());
+      resetToken = await this.prisma.passwordResetToken.findUnique({
+        where: { tokenHash },
+        include: { user: true },
+      });
+    } else if (dto.email && dto.otp) {
+      const normalized = dto.email.trim().toLowerCase();
+      const user = await this.usersService.findByEmail(normalized);
+      if (!user) {
+        throw new BadRequestException('Password reset code is invalid or has expired.');
+      }
+
+      resetToken = await this.prisma.passwordResetToken.findFirst({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { user: true },
+      });
+
+      if (!resetToken) {
+        throw new BadRequestException('No pending password reset request found for this email.');
+      }
+
+      if (resetToken.attempts >= 5) {
+        throw new BadRequestException(
+          'Too many incorrect reset attempts. Please request a new password reset code.',
+        );
+      }
+
+      const expectedOtpHash = this.hashOtp(user.id, dto.otp.trim());
+      if (resetToken.otpHash !== expectedOtpHash) {
+        await this.prisma.passwordResetToken.update({
+          where: { id: resetToken.id },
+          data: { attempts: { increment: 1 } },
+        });
+        const remainingAttempts = 4 - resetToken.attempts;
+        throw new BadRequestException(
+          remainingAttempts > 0
+            ? `Invalid reset code. ${remainingAttempts} attempt(s) remaining.`
+            : 'Too many incorrect attempts. Please request a new password reset code.',
+        );
+      }
+    } else {
+      throw new BadRequestException('Password reset token or 6-digit OTP code is required.');
+    }
 
     if (!resetToken || resetToken.usedAt !== null || resetToken.expiresAt <= now) {
       throw new BadRequestException('Password reset token is invalid or has expired.');
@@ -662,11 +728,13 @@ export class AuthService {
   }
 
   /**
-   * Creates a single-use email verification token (valid for 24 hours).
+   * Creates a single-use email verification token and 6-digit OTP (valid for 24 hours).
    */
-  async createEmailVerificationToken(userId: string): Promise<string> {
+  async createEmailVerificationToken(userId: string): Promise<{ rawToken: string; otp: string }> {
     const rawToken = this.generateRawToken();
     const tokenHash = this.hashToken(rawToken);
+    const otp = this.generateOtp();
+    const otpHash = this.hashOtp(userId, otp);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await this.prisma.emailVerificationToken.deleteMany({
@@ -680,28 +748,77 @@ export class AuthService {
       data: {
         userId,
         tokenHash,
+        otpHash,
+        attempts: 0,
         expiresAt,
       },
     });
 
-    return rawToken;
+    return { rawToken, otp };
   }
 
   /**
-   * Verifies an email verification token and marks the user's email as verified.
+   * Verifies an email verification token or 6-digit OTP and marks the user's email as verified.
    */
-  async verifyEmail(token: string): Promise<MessageResponseDto> {
-    if (!token || typeof token !== 'string') {
-      throw new BadRequestException('Verification token is required.');
-    }
-
-    const tokenHash = this.hashToken(token.trim());
+  async verifyEmail(input: string | VerifyEmailDto): Promise<MessageResponseDto> {
     const now = new Date();
+    let record;
 
-    const record = await this.prisma.emailVerificationToken.findUnique({
-      where: { tokenHash },
-      include: { user: true },
-    });
+    if (typeof input === 'string') {
+      const tokenHash = this.hashToken(input.trim());
+      record = await this.prisma.emailVerificationToken.findUnique({
+        where: { tokenHash },
+        include: { user: true },
+      });
+    } else if (input.token) {
+      const tokenHash = this.hashToken(input.token.trim());
+      record = await this.prisma.emailVerificationToken.findUnique({
+        where: { tokenHash },
+        include: { user: true },
+      });
+    } else if (input.email && input.otp) {
+      const normalized = input.email.trim().toLowerCase();
+      const user = await this.usersService.findByEmail(normalized);
+      if (!user) {
+        throw new BadRequestException('Verification code is invalid or has expired.');
+      }
+
+      record = await this.prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { user: true },
+      });
+
+      if (!record) {
+        throw new BadRequestException('No pending verification found for this email.');
+      }
+
+      if (record.attempts >= 5) {
+        throw new BadRequestException(
+          'Too many incorrect verification attempts. Please request a new code.',
+        );
+      }
+
+      const expectedOtpHash = this.hashOtp(user.id, input.otp.trim());
+      if (record.otpHash !== expectedOtpHash) {
+        await this.prisma.emailVerificationToken.update({
+          where: { id: record.id },
+          data: { attempts: { increment: 1 } },
+        });
+        const remainingAttempts = 4 - record.attempts;
+        throw new BadRequestException(
+          remainingAttempts > 0
+            ? `Invalid verification code. ${remainingAttempts} attempt(s) remaining.`
+            : 'Too many incorrect attempts. Please request a new verification code.',
+        );
+      }
+    } else {
+      throw new BadRequestException('Verification token or 6-digit OTP code is required.');
+    }
 
     if (!record || record.usedAt !== null || record.expiresAt <= now) {
       throw new BadRequestException(
@@ -749,8 +866,8 @@ export class AuthService {
       return genericResponse;
     }
 
-    const rawVerifyToken = await this.createEmailVerificationToken(user.id);
-    const verificationUrl = `${this.webOrigin}/verify-email?token=${rawVerifyToken}`;
+    const { rawToken, otp } = await this.createEmailVerificationToken(user.id);
+    const verificationUrl = `${this.webOrigin}/verify-email?token=${rawToken}`;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     this.mailService
@@ -758,6 +875,7 @@ export class AuthService {
         email: user.email,
         verificationUrl,
         expiresAt,
+        otp,
       })
       .catch((err) =>
         this.logger.error(`Failed to dispatch verification email: ${(err as Error).message}`),

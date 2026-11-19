@@ -179,10 +179,10 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify email address with cryptographic token' })
+  @ApiOperation({ summary: 'Verify email address with cryptographic token or 6-digit OTP' })
   @ApiResponse({ status: 200, description: 'Email address verified successfully' })
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
-    return this.authService.verifyEmail(dto.token);
+    return this.authService.verifyEmail(dto);
   }
 
   @Public()

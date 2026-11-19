@@ -57,12 +57,14 @@ describe('AuthService', () => {
       passwordResetToken: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         deleteMany: jest.fn(),
         update: jest.fn(),
       },
       emailVerificationToken: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         deleteMany: jest.fn(),
         update: jest.fn(),
       },
@@ -515,6 +517,107 @@ describe('AuthService', () => {
     });
   });
 
+  describe('resetPassword', () => {
+    it('should reset password with valid token and revoke sessions', async () => {
+      const resetRecord = {
+        id: 'prt-1',
+        userId: 'user-uuid-1',
+        tokenHash: 'token-hash',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      prisma.passwordResetToken.findUnique.mockResolvedValue(resetRecord);
+      passwordHasher.hash.mockResolvedValue('$argon2id$newpasswordhash');
+      prisma.passwordResetToken.update.mockResolvedValue({ id: 'prt-1' });
+      prisma.user.update.mockResolvedValue({ id: 'user-uuid-1' });
+      prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.resetPassword({
+        token: 'valid-reset-token',
+        newPassword: 'new-valid-passphrase-15chars',
+      });
+
+      expect(prisma.passwordResetToken.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'prt-1' },
+          data: expect.objectContaining({ usedAt: expect.any(Date) }),
+        }),
+      );
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1' },
+        data: { passwordHash: '$argon2id$newpasswordhash' },
+      });
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-uuid-1', revokedAt: null },
+        data: { revokedAt: expect.any(Date), revocationReason: 'PASSWORD_RESET' },
+      });
+      expect(result.message).toContain('successfully reset');
+    });
+
+    it('should reset password with valid email and 6-digit OTP', async () => {
+      const otp = '123456';
+      const otpHash = (service as any).hashOtp(mockUser.id, otp);
+      const resetRecord = {
+        id: 'prt-2',
+        userId: mockUser.id,
+        otpHash,
+        attempts: 0,
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      usersService.findByEmail.mockResolvedValue(mockUser);
+      prisma.passwordResetToken.findFirst.mockResolvedValue(resetRecord);
+      passwordHasher.hash.mockResolvedValue('$argon2id$newpasswordhash');
+      prisma.passwordResetToken.update.mockResolvedValue({ id: 'prt-2' });
+      prisma.user.update.mockResolvedValue({ id: mockUser.id });
+      prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.resetPassword({
+        email: mockUser.email,
+        otp,
+        newPassword: 'new-valid-passphrase-15chars',
+      });
+
+      expect(result.message).toContain('successfully reset');
+    });
+
+    it('should increment attempts and reject when OTP is incorrect', async () => {
+      const correctOtp = '123456';
+      const wrongOtp = '654321';
+      const otpHash = (service as any).hashOtp(mockUser.id, correctOtp);
+      const resetRecord = {
+        id: 'prt-3',
+        userId: mockUser.id,
+        otpHash,
+        attempts: 0,
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      usersService.findByEmail.mockResolvedValue(mockUser);
+      prisma.passwordResetToken.findFirst.mockResolvedValue(resetRecord);
+      prisma.passwordResetToken.update.mockResolvedValue({ id: 'prt-3' });
+
+      await expect(
+        service.resetPassword({
+          email: mockUser.email,
+          otp: wrongOtp,
+          newPassword: 'new-valid-passphrase-15chars',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.passwordResetToken.update).toHaveBeenCalledWith({
+        where: { id: 'prt-3' },
+        data: { attempts: { increment: 1 } },
+      });
+    });
+  });
+
   describe('verifyEmail', () => {
     it('should verify email with valid token', async () => {
       const mockRecord = {
@@ -545,6 +648,69 @@ describe('AuthService', () => {
         }),
       );
       expect(result.message).toContain('verified successfully');
+    });
+
+    it('should verify email with valid 6-digit OTP and email', async () => {
+      const otp = '654321';
+      const otpHash = (service as any).hashOtp(mockUser.id, otp);
+      const mockRecord = {
+        id: 'evt-otp-1',
+        userId: mockUser.id,
+        otpHash,
+        attempts: 0,
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      usersService.findByEmail.mockResolvedValue(mockUser);
+      prisma.emailVerificationToken.findFirst.mockResolvedValue(mockRecord);
+      prisma.emailVerificationToken.update.mockResolvedValue({ id: 'evt-otp-1' });
+      prisma.user.update.mockResolvedValue({ id: mockUser.id, isEmailVerified: true });
+
+      const result = await service.verifyEmail({
+        email: mockUser.email,
+        otp,
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: mockUser.id },
+          data: { isEmailVerified: true },
+        }),
+      );
+      expect(result.message).toContain('verified successfully');
+    });
+
+    it('should increment attempts and reject invalid OTP for email verification', async () => {
+      const correctOtp = '654321';
+      const wrongOtp = '111111';
+      const otpHash = (service as any).hashOtp(mockUser.id, correctOtp);
+      const mockRecord = {
+        id: 'evt-otp-2',
+        userId: mockUser.id,
+        otpHash,
+        attempts: 1,
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      usersService.findByEmail.mockResolvedValue(mockUser);
+      prisma.emailVerificationToken.findFirst.mockResolvedValue(mockRecord);
+      prisma.emailVerificationToken.update.mockResolvedValue({ id: 'evt-otp-2' });
+
+      await expect(
+        service.verifyEmail({
+          email: mockUser.email,
+          otp: wrongOtp,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.emailVerificationToken.update).toHaveBeenCalledWith({
+        where: { id: 'evt-otp-2' },
+        data: { attempts: { increment: 1 } },
+      });
     });
 
     it('should reject verification if token is invalid or expired', async () => {

@@ -55,12 +55,16 @@ export interface ForgotPasswordDto {
 }
 
 export interface ResetPasswordDto {
-  token: string;
+  token?: string;
+  email?: string;
+  otp?: string;
   newPassword: string;
 }
 
 export interface VerifyEmailDto {
-  token: string;
+  token?: string;
+  email?: string;
+  otp?: string;
 }
 
 export interface ResendVerificationDto {

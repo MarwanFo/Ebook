@@ -1,13 +1,28 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { VerifyEmailDto as IVerifyEmailDto } from '@bookflow/shared-types';
 
 export class VerifyEmailDto implements IVerifyEmailDto {
-  @ApiProperty({
-    description: 'Cryptographic email verification token',
-    example: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+  @ApiPropertyOptional({
+    description: 'Cryptographic email verification token from URL link',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Verification token is required.' })
-  token: string;
+  token?: string;
+
+  @ApiPropertyOptional({
+    description: 'User email address (required when verifying via 6-digit OTP)',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Must be a valid email address.' })
+  email?: string;
+
+  @ApiPropertyOptional({
+    description: '6-digit numeric verification OTP',
+    example: '123456',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6, { message: 'OTP must be exactly 6 digits.' })
+  otp?: string;
 }

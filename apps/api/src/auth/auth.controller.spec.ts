@@ -232,7 +232,7 @@ describe('AuthController', () => {
       });
 
       const result = await controller.verifyEmail({ token: 'test-token' });
-      expect(authService.verifyEmail).toHaveBeenCalledWith('test-token');
+      expect(authService.verifyEmail).toHaveBeenCalledWith({ token: 'test-token' });
       expect(result).toEqual({ message: 'Email address verified successfully.' });
     });
   });

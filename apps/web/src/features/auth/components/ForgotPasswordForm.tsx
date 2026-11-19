@@ -45,14 +45,22 @@ export const ForgotPasswordForm: React.FC = () => {
         <p className="mt-2 text-xs text-text-muted/80">
           Be sure to check your spam or junk folder if the message does not appear in a few minutes.
         </p>
-        <div className="mt-6 pt-4 border-t border-border">
-          <Link
-            to="/login"
-            className="inline-flex items-center text-sm font-semibold text-primary hover:underline transition-colors"
-          >
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Back to Sign In
+        <div className="mt-6 space-y-3">
+          <Link to={`/reset-password?email=${encodeURIComponent(email)}`} className="block w-full">
+            <Button variant="primary" className="w-full py-2.5 text-sm font-semibold">
+              <span>Enter 6-Digit Code</span>
+              <KeyRound className="ml-2 h-4 w-4" />
+            </Button>
           </Link>
+          <div className="pt-3 border-t border-border">
+            <Link
+              to="/login"
+              className="inline-flex items-center text-sm font-semibold text-primary hover:underline transition-colors"
+            >
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Back to Sign In
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -68,7 +76,7 @@ export const ForgotPasswordForm: React.FC = () => {
           Reset Your Password
         </h2>
         <p className="mt-2 text-sm text-text-muted leading-relaxed">
-          Enter your email address and we will send you a secure link to reset your password.
+          Enter your email address to receive a 6-digit reset code and recovery link.
         </p>
       </div>
 
@@ -112,8 +120,17 @@ export const ForgotPasswordForm: React.FC = () => {
             className="w-full py-2.5 text-sm font-semibold shadow-sm active:scale-[0.99] transition-all"
             disabled={forgotMutation.isPending}
           >
-            {forgotMutation.isPending ? 'Sending Link...' : 'Send Reset Link'}
+            {forgotMutation.isPending ? 'Sending Link...' : 'Send Reset Link & Code'}
           </Button>
+        </div>
+
+        <div className="text-center pt-2">
+          <Link
+            to="/reset-password"
+            className="text-xs text-text-muted hover:text-primary transition-colors"
+          >
+            Already have a 6-digit code? Enter it here
+          </Link>
         </div>
       </form>
 

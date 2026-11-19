@@ -2,6 +2,7 @@ export interface SendPasswordResetInput {
   email: string;
   resetUrl: string;
   expiresAt: Date;
+  otp?: string;
 }
 
 export interface SendPasswordChangedInput {
@@ -13,6 +14,7 @@ export interface SendEmailVerificationInput {
   email: string;
   verificationUrl: string;
   expiresAt: Date;
+  otp?: string;
 }
 
 export interface SendRegistrationAttemptAlertInput {
