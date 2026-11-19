@@ -8,5 +8,5 @@
       "@bookflow/shared-types": ["../../packages/shared-types/src/index.ts"]
     }
   },
-  "include": ["src/**/*", "test/**/*", "prisma/**/*"]
+  "include": ["src/**/*", "test/**/*", "prisma/**/*", "../../packages/shared-types/src/**/*"]
 }
