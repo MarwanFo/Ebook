@@ -12,7 +12,7 @@
     "dev": "pnpm --parallel --filter \"@bookflow/*\" dev",
     "dev:api": "pnpm --filter @bookflow/api dev",
     "dev:web": "pnpm --filter @bookflow/web dev",
-    "build": "pnpm --filter @bookflow/shared-types build && pnpm --filter @bookflow/api build && pnpm --filter @bookflow/web build",
+    "build": "pnpm --filter @bookflow/shared-types build && pnpm --filter @bookflow/api db:generate && pnpm --filter @bookflow/api build && pnpm --filter @bookflow/web build",
     "lint": "pnpm --filter @bookflow/shared-types build && pnpm -r run lint",
     "typecheck": "pnpm --filter @bookflow/shared-types build && pnpm -r run typecheck",
     "test": "pnpm --filter @bookflow/shared-types build && pnpm -r run test",
