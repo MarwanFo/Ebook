@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main",
-    "build": "prisma generate && nest build",
+    "build": "pnpm --filter @bookflow/shared-types build && prisma generate && nest build",
     "lint": "eslint src test --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.config.json --runInBand",
