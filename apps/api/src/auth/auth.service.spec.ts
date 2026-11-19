@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@bookflow/shared-types';
@@ -104,6 +104,7 @@ describe('AuthService', () => {
       sendPasswordReset: jest.fn().mockResolvedValue(undefined),
       sendPasswordChanged: jest.fn().mockResolvedValue(undefined),
       sendEmailVerification: jest.fn().mockResolvedValue(undefined),
+      sendRegistrationAttemptAlert: jest.fn().mockResolvedValue(undefined),
     };
 
     service = new AuthService(
@@ -223,6 +224,29 @@ describe('AuthService', () => {
           verificationUrl: expect.stringContaining('/verify-email?token='),
         }),
       );
+    });
+
+    it('should dispatch security alert email and reject when email is already registered', async () => {
+      usersService.create.mockRejectedValueOnce(
+        new ConflictException('An account with this email address already exists.'),
+      );
+
+      await expect(
+        service.register(
+          {
+            email: 'existing@example.com',
+            password: 'super-secure-passphrase-12345',
+          },
+          '127.0.0.1',
+          'Jest-Test',
+        ),
+      ).rejects.toThrow(ConflictException);
+
+      expect(mailService.sendRegistrationAttemptAlert).toHaveBeenCalledWith({
+        email: 'existing@example.com',
+        loginUrl: 'http://localhost:5173/login',
+        resetUrl: 'http://localhost:5173/forgot-password',
+      });
     });
   });
 

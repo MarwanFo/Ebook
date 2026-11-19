@@ -157,7 +157,22 @@ export const RegisterForm: React.FC = () => {
               className="mb-6 flex items-start space-x-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs sm:text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400"
             >
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
-              <span>{formError}</span>
+              <div className="flex-1 space-y-1">
+                <span>{formError}</span>
+                {formError.toLowerCase().includes('already exists') && (
+                  <div className="flex items-center gap-3 pt-1 text-xs font-semibold">
+                    <Link to="/login" className="text-primary hover:underline transition-colors">
+                      Sign in &rarr;
+                    </Link>
+                    <Link
+                      to="/forgot-password"
+                      className="text-text-muted hover:text-text transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { MailService, SendPasswordChangedInput, SendPasswordResetInput } from './mail.interface';
+import {
+  MailService,
+  SendEmailVerificationInput,
+  SendPasswordChangedInput,
+  SendPasswordResetInput,
+  SendRegistrationAttemptAlertInput,
+} from './mail.interface';
 
 @Injectable()
 export class SmtpMailService implements MailService {
@@ -101,11 +107,7 @@ export class SmtpMailService implements MailService {
     }
   }
 
-  async sendEmailVerification(input: {
-    email: string;
-    verificationUrl: string;
-    expiresAt: Date;
-  }): Promise<void> {
+  async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: this.fromAddress,
@@ -149,6 +151,58 @@ export class SmtpMailService implements MailService {
       this.logger.error(
         JSON.stringify({
           event: 'EMAIL_VERIFICATION_DISPATCH_FAILED',
+          recipient: this.maskEmail(input.email),
+          error: error instanceof Error ? error.message : 'Unknown transport error',
+        }),
+      );
+    }
+  }
+
+  async sendRegistrationAttemptAlert(input: SendRegistrationAttemptAlertInput): Promise<void> {
+    try {
+      await this.transporter.sendMail({
+        from: this.fromAddress,
+        to: input.email,
+        subject: 'Security Notice: Attempted Registration on BookFlow',
+        text: `Someone recently attempted to create a BookFlow account using your email address.\n\nIf this was you, you already have an account! You can sign in here: ${input.loginUrl}\nOr reset your password here: ${input.resetUrl}\n\nIf this was NOT you, you can safely ignore this email. Your existing account remains protected with strong cryptography.`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+            <div style="margin-bottom: 24px;">
+              <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin: 0 0 8px 0;">Account Registration Notice 🛡️</h2>
+              <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
+                Someone recently attempted to register a new BookFlow account using your email address.
+              </p>
+              <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 12px 0 0 0;">
+                Since you already have an account with us, no new account was created and no data was shared.
+              </p>
+            </div>
+            <div style="margin: 24px 0; text-align: center;">
+              <a href="${input.loginUrl}" style="display: inline-block; background-color: #c25e00; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 8px; margin-right: 8px;">
+                Sign In to BookFlow
+              </a>
+              <a href="${input.resetUrl}" style="display: inline-block; background-color: #f3f4f6; color: #374151; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 8px;">
+                Reset Password
+              </a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+            <p style="color: #9ca3af; font-size: 11px; line-height: 1.5; margin: 0;">
+              If this was not you, no action is needed. Your existing account is completely safe and unaffected.
+            </p>
+          </div>
+        `,
+      });
+
+      this.logger.log(
+        JSON.stringify({
+          event: 'REGISTRATION_ATTEMPT_ALERT_DISPATCHED',
+          recipient: this.maskEmail(input.email),
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'REGISTRATION_ATTEMPT_ALERT_FAILED',
           recipient: this.maskEmail(input.email),
           error: error instanceof Error ? error.message : 'Unknown transport error',
         }),

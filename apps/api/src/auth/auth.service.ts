@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -213,11 +214,36 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.create({
-      email: dto.email,
-      passwordPlain: dto.password,
-      displayName: dto.displayName,
-    });
+    let user;
+    try {
+      user = await this.usersService.create({
+        email: dto.email,
+        passwordPlain: dto.password,
+        displayName: dto.displayName,
+      });
+    } catch (err) {
+      if (err instanceof ConflictException) {
+        this.logger.warn(
+          `[SECURITY_AUDIT] Registration attempt for already-registered email: ${dto.email} from IP: ${ipAddress}`,
+        );
+
+        // Dispatch security notification to the existing account owner (anti-takeover / anti-enumeration)
+        const loginUrl = `${this.webOrigin}/login`;
+        const resetUrl = `${this.webOrigin}/forgot-password`;
+        this.mailService
+          .sendRegistrationAttemptAlert({
+            email: dto.email,
+            loginUrl,
+            resetUrl,
+          })
+          .catch((mailErr) =>
+            this.logger.error(
+              `Failed to send duplicate registration alert email: ${(mailErr as Error).message}`,
+            ),
+          );
+      }
+      throw err;
+    }
 
     const accessToken = this.generateAccessToken(user.id);
     const rawRefreshToken = await this.createRefreshToken(user.id, ipAddress, userAgent);

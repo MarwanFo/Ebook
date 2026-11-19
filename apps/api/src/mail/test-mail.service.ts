@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
   MailService,
+  SendEmailVerificationInput,
   SendPasswordChangedInput,
   SendPasswordResetInput,
+  SendRegistrationAttemptAlertInput,
   SentEmailRecord,
 } from './mail.interface';
 
@@ -27,15 +29,20 @@ export class TestMailService implements MailService {
     });
   }
 
-  async sendEmailVerification(input: {
-    email: string;
-    verificationUrl: string;
-    expiresAt: Date;
-  }): Promise<void> {
+  async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
     this.sentEmails.push({
       to: input.email,
       subject: 'Verify your BookFlow email address',
       text: `Verification link: ${input.verificationUrl}`,
+      timestamp: new Date(),
+    });
+  }
+
+  async sendRegistrationAttemptAlert(input: SendRegistrationAttemptAlertInput): Promise<void> {
+    this.sentEmails.push({
+      to: input.email,
+      subject: 'Security Notice: Attempted Registration on BookFlow',
+      text: `Someone attempted to create an account with your email. Login: ${input.loginUrl}, Reset: ${input.resetUrl}`,
       timestamp: new Date(),
     });
   }

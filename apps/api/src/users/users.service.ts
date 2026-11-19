@@ -71,6 +71,8 @@ export class UsersService {
 
     const existing = await this.findByEmail(normalizedEmail);
     if (existing) {
+      // Timing defense: equalize execution latency via Argon2id hashing before rejecting
+      await this.passwordHasher.hash(data.passwordPlain);
       throw new ConflictException('An account with this email address already exists.');
     }
 

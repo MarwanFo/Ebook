@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -170,6 +170,29 @@ describe('RegisterForm', () => {
           botField: 'automated spam script',
         }),
       );
+    });
+  });
+
+  it('renders sign in and reset password navigation shortcuts when account already exists', async () => {
+    vi.mocked(authApi.register).mockRejectedValueOnce(
+      new Error('An account with this email address already exists.'),
+    );
+
+    renderComponent();
+    const user = userEvent.setup();
+
+    const validPassphrase = 'super-secure-passphrase-12345';
+    await user.type(screen.getByLabelText(/Email Address/i), 'existing@example.com');
+    await user.type(screen.getByLabelText(/^Passphrase$/i), validPassphrase);
+    await user.type(screen.getByLabelText(/Confirm Passphrase/i), validPassphrase);
+
+    await user.click(screen.getByRole('button', { name: /Create Account/i }));
+
+    await waitFor(() => {
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent(/already exists/i);
+      expect(within(alert).getByRole('link', { name: /Sign in/i })).toBeInTheDocument();
+      expect(within(alert).getByRole('link', { name: /Forgot password/i })).toBeInTheDocument();
     });
   });
 });

@@ -15,6 +15,12 @@ export interface SendEmailVerificationInput {
   expiresAt: Date;
 }
 
+export interface SendRegistrationAttemptAlertInput {
+  email: string;
+  loginUrl: string;
+  resetUrl: string;
+}
+
 export interface SentEmailRecord {
   to: string;
   subject: string;
@@ -27,6 +33,7 @@ export interface MailService {
   sendPasswordReset(input: SendPasswordResetInput): Promise<void>;
   sendPasswordChanged(input: SendPasswordChangedInput): Promise<void>;
   sendEmailVerification(input: SendEmailVerificationInput): Promise<void>;
+  sendRegistrationAttemptAlert(input: SendRegistrationAttemptAlertInput): Promise<void>;
 }
 
 export const MAIL_SERVICE = 'MAIL_SERVICE';
