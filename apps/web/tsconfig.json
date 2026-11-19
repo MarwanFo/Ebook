@@ -4,9 +4,9 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
-      "@bookflow/shared-types": ["../../packages/shared-types/src/index.ts"]
+      "@bookflow/shared-types": ["../../packages/shared-types/src"]
     }
   },
-  "include": ["src/**/*", "../../packages/shared-types/src/**/*"],
+  "include": ["src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
