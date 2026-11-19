@@ -100,6 +100,18 @@ export class SmtpMailService implements MailService {
           error: error instanceof Error ? error.message : 'Unknown transport error',
         }),
       );
+
+      if (this.configService.get<string>('NODE_ENV') !== 'production') {
+        this.logger.warn(
+          `\n==================== [DEV OTP HELPER] ====================\n` +
+            `Recipient:   ${input.email}\n` +
+            `6-Digit OTP: ${input.otp || 'N/A'}\n` +
+            `Direct Link: ${input.resetUrl}\n` +
+            `Reason:      SMTP transport failed (${error instanceof Error ? error.message : 'offline'}).\n` +
+            `Setup Tip:   To send real emails to your Gmail inbox, add SMTP_USER & SMTP_PASSWORD to .env\n` +
+            `==========================================================\n`,
+        );
+      }
     }
   }
 
@@ -200,6 +212,18 @@ export class SmtpMailService implements MailService {
           error: error instanceof Error ? error.message : 'Unknown transport error',
         }),
       );
+
+      if (this.configService.get<string>('NODE_ENV') !== 'production') {
+        this.logger.warn(
+          `\n==================== [DEV OTP HELPER] ====================\n` +
+            `Recipient:   ${input.email}\n` +
+            `6-Digit OTP: ${input.otp || 'N/A'}\n` +
+            `Direct Link: ${input.verificationUrl}\n` +
+            `Reason:      SMTP transport failed (${error instanceof Error ? error.message : 'offline'}).\n` +
+            `Setup Tip:   To send real emails to your Gmail inbox, add SMTP_USER & SMTP_PASSWORD to .env\n` +
+            `==========================================================\n`,
+        );
+      }
     }
   }
 
