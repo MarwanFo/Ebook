@@ -22,6 +22,8 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import {
   AuthSessionDto,
   AuthTokensDto,
@@ -171,5 +173,25 @@ export class AuthController {
     const result = await this.authService.resetPassword(dto);
     this.cookieService.clearRefreshCookie(res);
     return result;
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address with cryptographic token' })
+  @ApiResponse({ status: 200, description: 'Email address verified successfully' })
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
+    return this.authService.verifyEmail(dto.token);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiResponse({ status: 200, description: 'Verification link resent if eligible' })
+  async resendVerification(@Body() dto: ResendVerificationDto): Promise<MessageResponseDto> {
+    return this.authService.resendVerification(dto.email);
   }
 }

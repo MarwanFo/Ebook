@@ -56,4 +56,16 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(dto),
     }),
+
+  verifyEmail: (token: string): Promise<MessageResponseDto> =>
+    request<MessageResponseDto>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
+
+  resendVerification: (email: string): Promise<MessageResponseDto> =>
+    request<MessageResponseDto>('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
 };

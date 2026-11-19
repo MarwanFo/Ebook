@@ -45,6 +45,7 @@ describe('JwtStrategy', () => {
       avatarUrl: null,
       passwordHash: 'hash',
       role: UserRole.USER,
+      isEmailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

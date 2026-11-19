@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { MAIL_SERVICE, MailService } from '../mail/mail.interface';
 import { validatePasswordPolicy } from './utils/password-validator';
+import { isDisposableEmail } from './utils/disposable-email-validator';
 import {
   AuthSessionDto,
   ChangePasswordDto,
@@ -180,7 +181,15 @@ export class AuthService {
       throw new BadRequestException('Registration request verification failed.');
     }
 
-    // 2. Cloudflare Turnstile verification (when secret key is configured and not running in test suite)
+    // 2. Reject disposable and temporary email addresses
+    if (isDisposableEmail(dto.email)) {
+      this.logger.warn(
+        `Registration rejected for disposable email: ${dto.email} from IP: ${ipAddress}`,
+      );
+      throw new BadRequestException('Disposable and temporary email addresses are not permitted.');
+    }
+
+    // 3. Cloudflare Turnstile verification (when secret key is configured and not running in test suite)
     const isTest = this.configService.get<string>('NODE_ENV') === 'test';
     if (this.turnstileSecretKey && !isTest) {
       if (!dto.turnstileToken) {
@@ -200,6 +209,23 @@ export class AuthService {
 
     const accessToken = this.generateAccessToken(user.id);
     const rawRefreshToken = await this.createRefreshToken(user.id, ipAddress, userAgent);
+
+    // Issue cryptographic verification token and dispatch verification email
+    try {
+      const rawVerifyToken = await this.createEmailVerificationToken(user.id);
+      const verificationUrl = `${this.webOrigin}/verify-email?token=${rawVerifyToken}`;
+      this.mailService
+        .sendEmailVerification({
+          email: user.email,
+          verificationUrl,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send email verification: ${(err as Error).message}`),
+        );
+    } catch (err) {
+      this.logger.error(`Failed to create verification token: ${(err as Error).message}`);
+    }
 
     return {
       session: {
@@ -581,5 +607,110 @@ export class AuthService {
     return {
       message: 'Your password has been successfully reset. Please log in with your new password.',
     };
+  }
+
+  /**
+   * Creates a single-use email verification token (valid for 24 hours).
+   */
+  async createEmailVerificationToken(userId: string): Promise<string> {
+    const rawToken = this.generateRawToken();
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerificationToken.deleteMany({
+      where: {
+        userId,
+        usedAt: null,
+      },
+    });
+
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return rawToken;
+  }
+
+  /**
+   * Verifies an email verification token and marks the user's email as verified.
+   */
+  async verifyEmail(token: string): Promise<MessageResponseDto> {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Verification token is required.');
+    }
+
+    const tokenHash = this.hashToken(token.trim());
+    const now = new Date();
+
+    const record = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!record || record.usedAt !== null || record.expiresAt <= now) {
+      throw new BadRequestException(
+        'Invalid or expired verification link. Please request a new verification email.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.emailVerificationToken.update({
+        where: { id: record.id },
+        data: { usedAt: now },
+      });
+
+      await tx.user.update({
+        where: { id: record.userId },
+        data: { isEmailVerified: true },
+      });
+    });
+
+    this.logger.log(`Email successfully verified for user: ${record.userId}`);
+    return {
+      message: 'Email address verified successfully. Your account is fully activated.',
+    };
+  }
+
+  /**
+   * Resends verification email with timing-safe response (anti-enumeration).
+   */
+  async resendVerification(email: string): Promise<MessageResponseDto> {
+    const genericResponse: MessageResponseDto = {
+      message:
+        'If an unverified account is registered with this email, a verification link has been sent.',
+    };
+
+    if (!email || typeof email !== 'string') {
+      return genericResponse;
+    }
+
+    const normalized = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalized);
+
+    // If user does not exist or already verified, perform dummy hash to maintain bounded execution time
+    if (!user || user.isEmailVerified) {
+      await this.passwordHasher.verify(this.DUMMY_HASH, 'dummy-passphrase-timing');
+      return genericResponse;
+    }
+
+    const rawVerifyToken = await this.createEmailVerificationToken(user.id);
+    const verificationUrl = `${this.webOrigin}/verify-email?token=${rawVerifyToken}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    this.mailService
+      .sendEmailVerification({
+        email: user.email,
+        verificationUrl,
+        expiresAt,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to dispatch verification email: ${(err as Error).message}`),
+      );
+
+    return genericResponse;
   }
 }

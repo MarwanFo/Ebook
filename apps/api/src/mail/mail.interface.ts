@@ -9,6 +9,12 @@ export interface SendPasswordChangedInput {
   timestamp: Date;
 }
 
+export interface SendEmailVerificationInput {
+  email: string;
+  verificationUrl: string;
+  expiresAt: Date;
+}
+
 export interface SentEmailRecord {
   to: string;
   subject: string;
@@ -20,6 +26,7 @@ export interface SentEmailRecord {
 export interface MailService {
   sendPasswordReset(input: SendPasswordResetInput): Promise<void>;
   sendPasswordChanged(input: SendPasswordChangedInput): Promise<void>;
+  sendEmailVerification(input: SendEmailVerificationInput): Promise<void>;
 }
 
 export const MAIL_SERVICE = 'MAIL_SERVICE';

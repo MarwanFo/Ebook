@@ -36,6 +36,7 @@ export class UsersService {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       role: user.role as unknown as SharedUserRole,
+      isEmailVerified: user.isEmailVerified,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };

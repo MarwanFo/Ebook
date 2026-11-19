@@ -9,6 +9,7 @@ export interface UserProfileDto {
   displayName: string;
   avatarUrl: string | null;
   role: UserRole;
+  isEmailVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,4 +57,12 @@ export interface ForgotPasswordDto {
 export interface ResetPasswordDto {
   token: string;
   newPassword: string;
+}
+
+export interface VerifyEmailDto {
+  token: string;
+}
+
+export interface ResendVerificationDto {
+  email: string;
 }

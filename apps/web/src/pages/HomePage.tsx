@@ -11,6 +11,7 @@ import {
   Library,
   Feather,
   Layers,
+  Mail,
 } from 'lucide-react';
 import { BookQueryDto, BookSummaryDto } from '@bookflow/shared-types';
 import { useAuthStore } from '../features/auth/stores/auth-store';
@@ -97,6 +98,25 @@ export const HomePage: React.FC = () => {
   if (isAuthenticated) {
     return (
       <div className="space-y-8 animate-fade-in pb-12 p-4 sm:p-6 lg:p-8">
+        {/* Unverified Email Alert Banner */}
+        {user?.isEmailVerified === false && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
+            <div className="flex items-center gap-2.5">
+              <Mail className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <span>
+                Please verify your email address (<strong>{user.email}</strong>) to secure your
+                account. Check your inbox for the activation link.
+              </span>
+            </div>
+            <Link
+              to="/verify-email"
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors whitespace-nowrap self-start sm:self-auto"
+            >
+              Resend Link
+            </Link>
+          </div>
+        )}
+
         {/* Welcome Masthead */}
         <div className="p-6 sm:p-8 rounded-2xl bg-surface border border-border shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>

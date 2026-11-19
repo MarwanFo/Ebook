@@ -24,6 +24,7 @@ describe('AuthService', () => {
     avatarUrl: null,
     passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$somehash',
     role: UserRole.USER,
+    isEmailVerified: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -34,6 +35,7 @@ describe('AuthService', () => {
     displayName: 'Bookworm',
     avatarUrl: null,
     role: UserRole.USER,
+    isEmailVerified: true,
     createdAt: mockUser.createdAt.toISOString(),
     updatedAt: mockUser.updatedAt.toISOString(),
   };
@@ -48,6 +50,12 @@ describe('AuthService', () => {
         updateMany: jest.fn(),
       },
       passwordResetToken: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        deleteMany: jest.fn(),
+        update: jest.fn(),
+      },
+      emailVerificationToken: {
         create: jest.fn(),
         findUnique: jest.fn(),
         deleteMany: jest.fn(),
@@ -90,6 +98,7 @@ describe('AuthService', () => {
     mailService = {
       sendPasswordReset: jest.fn().mockResolvedValue(undefined),
       sendPasswordChanged: jest.fn().mockResolvedValue(undefined),
+      sendEmailVerification: jest.fn().mockResolvedValue(undefined),
     };
 
     service = new AuthService(
@@ -145,6 +154,53 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(usersService.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject registration if email is a disposable email address', async () => {
+      await expect(
+        service.register(
+          {
+            email: 'burner@mailinator.com',
+            password: 'super-secure-passphrase-12345',
+          },
+          '127.0.0.1',
+          'Jest-Test',
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(usersService.create).not.toHaveBeenCalled();
+    });
+
+    it('should create email verification token and dispatch email on register', async () => {
+      usersService.create.mockResolvedValue(mockUser);
+      usersService.toProfileDto.mockReturnValue(mockProfile);
+      prisma.refreshToken.create.mockResolvedValue({ id: 'rt-1' });
+      prisma.emailVerificationToken.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.emailVerificationToken.create.mockResolvedValue({ id: 'evt-1' });
+
+      await service.register(
+        {
+          email: 'reader@example.com',
+          password: 'super-secure-passphrase-12345',
+        },
+        '127.0.0.1',
+        'Jest-Test',
+      );
+
+      expect(prisma.emailVerificationToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: mockUser.id,
+            tokenHash: expect.any(String),
+          }),
+        }),
+      );
+      expect(mailService.sendEmailVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: mockUser.email,
+          verificationUrl: expect.stringContaining('/verify-email?token='),
+        }),
+      );
     });
   });
 
@@ -410,6 +466,75 @@ describe('AuthService', () => {
         }),
       );
       expect(result.message).toContain('If your email address is registered');
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should verify email with valid token', async () => {
+      const mockRecord = {
+        id: 'evt-1',
+        userId: 'user-uuid-1',
+        tokenHash: 'some-hash',
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 60000),
+        user: mockUser,
+      };
+
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(mockRecord);
+      prisma.emailVerificationToken.update.mockResolvedValue({ id: 'evt-1' });
+      prisma.user.update.mockResolvedValue({ id: 'user-uuid-1', isEmailVerified: true });
+
+      const result = await service.verifyEmail('valid-raw-token');
+
+      expect(prisma.emailVerificationToken.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'evt-1' },
+          data: expect.objectContaining({ usedAt: expect.any(Date) }),
+        }),
+      );
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-uuid-1' },
+          data: { isEmailVerified: true },
+        }),
+      );
+      expect(result.message).toContain('verified successfully');
+    });
+
+    it('should reject verification if token is invalid or expired', async () => {
+      prisma.emailVerificationToken.findUnique.mockResolvedValue(null);
+
+      await expect(service.verifyEmail('invalid-token')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('should dispatch verification email if unverified account exists', async () => {
+      const unverifiedUser = { ...mockUser, isEmailVerified: false };
+      usersService.findByEmail.mockResolvedValue(unverifiedUser as any);
+      prisma.emailVerificationToken.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.emailVerificationToken.create.mockResolvedValue({ id: 'evt-2' });
+
+      const result = await service.resendVerification('reader@example.com');
+
+      expect(mailService.sendEmailVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'reader@example.com',
+          verificationUrl: expect.stringContaining('/verify-email?token='),
+        }),
+      );
+      expect(result.message).toContain('verification link has been sent');
+    });
+
+    it('should return generic response without sending email if user is already verified', async () => {
+      const verifiedUser = { ...mockUser, isEmailVerified: true };
+      usersService.findByEmail.mockResolvedValue(verifiedUser as any);
+      passwordHasher.verify.mockResolvedValue(false);
+
+      const result = await service.resendVerification('reader@example.com');
+
+      expect(mailService.sendEmailVerification).not.toHaveBeenCalled();
+      expect(result.message).toContain('verification link has been sent');
     });
   });
 });

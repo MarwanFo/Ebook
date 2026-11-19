@@ -27,6 +27,19 @@ export class TestMailService implements MailService {
     });
   }
 
+  async sendEmailVerification(input: {
+    email: string;
+    verificationUrl: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    this.sentEmails.push({
+      to: input.email,
+      subject: 'Verify your BookFlow email address',
+      text: `Verification link: ${input.verificationUrl}`,
+      timestamp: new Date(),
+    });
+  }
+
   getSentEmails(): SentEmailRecord[] {
     return [...this.sentEmails];
   }

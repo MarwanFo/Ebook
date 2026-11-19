@@ -6,6 +6,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { ReaderPage } from '../pages/ReaderPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -53,6 +54,7 @@ export const AppRoutes: React.FC = () => {
             </PublicOnlyRoute>
           }
         />
+        <Route path="verify-email" element={<VerifyEmailPage />} />
 
         {/* Protected routes */}
         <Route

@@ -32,6 +32,8 @@ describe('AuthController', () => {
       changePassword: jest.fn(),
       forgotPassword: jest.fn(),
       resetPassword: jest.fn(),
+      verifyEmail: jest.fn(),
+      resendVerification: jest.fn(),
     } as any;
 
     cookieService = {
@@ -220,6 +222,30 @@ describe('AuthController', () => {
       });
       expect(cookieService.clearRefreshCookie).toHaveBeenCalledWith(mockResponse);
       expect(result).toEqual({ message: 'Password reset successfully' });
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('should call authService.verifyEmail and return result', async () => {
+      authService.verifyEmail.mockResolvedValue({
+        message: 'Email address verified successfully.',
+      });
+
+      const result = await controller.verifyEmail({ token: 'test-token' });
+      expect(authService.verifyEmail).toHaveBeenCalledWith('test-token');
+      expect(result).toEqual({ message: 'Email address verified successfully.' });
+    });
+  });
+
+  describe('resendVerification', () => {
+    it('should call authService.resendVerification and return result', async () => {
+      authService.resendVerification.mockResolvedValue({
+        message: 'Verification link resent.',
+      });
+
+      const result = await controller.resendVerification({ email: 'reader@example.com' });
+      expect(authService.resendVerification).toHaveBeenCalledWith('reader@example.com');
+      expect(result).toEqual({ message: 'Verification link resent.' });
     });
   });
 });
