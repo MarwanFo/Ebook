@@ -15,6 +15,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit(): Promise<void> {
+    if (process.env.VERCEL) {
+      // On serverless, do not block initialization waiting for a database connection;
+      // Prisma connects automatically on first query.
+      this.$connect().catch((error) => {
+        this.logger.warn(`Prisma deferred connection: ${(error as Error).message}`);
+      });
+      return;
+    }
+
     try {
       await this.$connect();
       this.logger.log('Prisma connected to PostgreSQL database successfully.');

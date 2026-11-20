@@ -124,8 +124,18 @@ export default async function handler(req: any, res: any) {
     return res.end();
   }
 
+  // Lightweight probe to verify serverless container execution
+  if (req.url === '/api/v1/ping' || req.url === '/ping') {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString() }));
+  }
+
   try {
+    const startTime = Date.now();
+    console.log(`[Serverless] Incoming ${req.method} ${req.url}`);
     const app = await getApp();
+    console.log(`[Serverless] App acquired in ${Date.now() - startTime}ms`);
     const instance = app.getHttpAdapter().getInstance();
     
     if (res.writableEnded) {
@@ -134,7 +144,10 @@ export default async function handler(req: any, res: any) {
 
     return new Promise<void>((resolve, reject) => {
       if (typeof res.on === 'function') {
-        res.on('finish', resolve);
+        res.on('finish', () => {
+          console.log(`[Serverless] Response finished in ${Date.now() - startTime}ms`);
+          resolve();
+        });
         res.on('close', resolve);
         res.on('error', reject);
       }
