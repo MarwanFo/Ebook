@@ -17,12 +17,14 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 
 @Injectable()
 export class SafeThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected async getTracker(req: Record<string, unknown>): Promise<string> {
+    const headers = req.headers as Record<string, string> | undefined;
+    const socket = req.socket as { remoteAddress?: string } | undefined;
     return (
-      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      (req.headers?.['x-real-ip'] as string) ||
-      req.ip ||
-      req.socket?.remoteAddress ||
+      headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+      headers?.['x-real-ip'] ||
+      (req.ip as string) ||
+      socket?.remoteAddress ||
       '127.0.0.1'
     );
   }

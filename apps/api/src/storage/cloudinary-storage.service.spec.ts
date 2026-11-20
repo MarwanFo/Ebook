@@ -1,3 +1,4 @@
+import { PassThrough } from 'stream';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
@@ -35,7 +36,6 @@ describe('CloudinaryStorageService', () => {
 
   it('should upload file to Cloudinary and return public_id', async () => {
     const mockUploadStream = jest.fn((options, callback) => {
-      const { PassThrough } = require('stream');
       const stream = new PassThrough();
       process.nextTick(() => {
         callback(null, { public_id: options.public_id });
@@ -43,7 +43,9 @@ describe('CloudinaryStorageService', () => {
       return stream;
     });
 
-    jest.spyOn(cloudinary.uploader, 'upload_stream').mockImplementation(mockUploadStream as any);
+    jest
+      .spyOn(cloudinary.uploader, 'upload_stream')
+      .mockImplementation(mockUploadStream as unknown as typeof cloudinary.uploader.upload_stream);
 
     const buffer = Buffer.from('test book content');
     const key = await service.saveFile('books/user1', 'sample.epub', buffer);

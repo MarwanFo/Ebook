@@ -256,7 +256,7 @@ export const VerifyEmailPage: React.FC = () => {
 
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-text-muted text-center mb-2.5">
-                  Didn't receive the email or code?
+                  Didn&apos;t receive the email or code?
                 </p>
                 <form onSubmit={handleResend}>
                   <Button

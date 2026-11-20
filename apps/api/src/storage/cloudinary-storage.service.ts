@@ -105,7 +105,7 @@ export class CloudinaryStorageService implements StorageService {
     }
 
     try {
-      const response: any = await fetch(fileUrl, { headers });
+      const response = await fetch(fileUrl, { headers });
 
       if (response.status === 404) {
         throw new NotFoundException(`File not found in Cloudinary: ${storageKey}`);
@@ -121,7 +121,9 @@ export class CloudinaryStorageService implements StorageService {
         throw new NotFoundException(`File body empty or not found: ${storageKey}`);
       }
 
-      return Readable.fromWeb(response.body as any);
+      return Readable.fromWeb(
+        response.body as unknown as Parameters<typeof Readable.fromWeb>[0],
+      );
     } catch (err) {
       if (err instanceof NotFoundException) {
         throw err;
@@ -139,7 +141,7 @@ export class CloudinaryStorageService implements StorageService {
     });
 
     try {
-      const response: any = await fetch(fileUrl);
+      const response = await fetch(fileUrl);
 
       if (response.status === 404) {
         throw new NotFoundException(`File not found in Cloudinary: ${storageKey}`);
@@ -181,8 +183,9 @@ export class CloudinaryStorageService implements StorageService {
       const cleanKey = this.sanitizeKey(storageKey);
       await cloudinary.api.resource(cleanKey, { resource_type: 'raw' });
       return true;
-    } catch (err: any) {
-      if (err?.error?.http_code === 404 || err?.http_code === 404) {
+    } catch (err: unknown) {
+      const errorObj = err as { error?: { http_code?: number }; http_code?: number };
+      if (errorObj?.error?.http_code === 404 || errorObj?.http_code === 404) {
         return false;
       }
       return false;
@@ -195,8 +198,9 @@ export class CloudinaryStorageService implements StorageService {
     try {
       const resource = await cloudinary.api.resource(cleanKey, { resource_type: 'raw' });
       return resource.bytes ?? 0;
-    } catch (err: any) {
-      if (err?.error?.http_code === 404 || err?.http_code === 404) {
+    } catch (err: unknown) {
+      const errorObj = err as { error?: { http_code?: number }; http_code?: number };
+      if (errorObj?.error?.http_code === 404 || errorObj?.http_code === 404) {
         throw new NotFoundException(`File not found in Cloudinary: ${storageKey}`);
       }
       this.logger.error(`Failed to get file size from Cloudinary (${storageKey}):`, err);

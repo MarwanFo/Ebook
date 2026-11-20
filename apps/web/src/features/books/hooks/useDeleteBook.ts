@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { QueryKey, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookSummaryDto, LibraryStatsDto, PaginatedResponse } from '@bookflow/shared-types';
 import { booksApi } from '../services/books-api';
 
 interface DeleteMutationContext {
-  previousBooksQueries: [unknown, PaginatedResponse<BookSummaryDto> | undefined][];
+  previousBooksQueries: [QueryKey, PaginatedResponse<BookSummaryDto> | undefined][];
   previousStats: LibraryStatsDto | undefined;
 }
 
@@ -64,7 +64,7 @@ export function useDeleteBook() {
       // Rollback to snapshot on failure
       if (context?.previousBooksQueries) {
         context.previousBooksQueries.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey as any, data);
+          queryClient.setQueryData(queryKey, data);
         });
       }
       if (context?.previousStats) {

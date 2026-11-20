@@ -146,17 +146,20 @@ export class S3StorageService implements StorageService {
       }
 
       // Modern AWS SDK v3 stream handling
-      const bodyWithTransform = response.Body as { transformToWebStream?: () => any };
-      if (typeof bodyWithTransform.transformToWebStream === 'function') {
+      const bodyWithTransform = response.Body as unknown as {
+        transformToWebStream?: () => Parameters<typeof Readable.fromWeb>[0];
+      };
+      if (typeof bodyWithTransform?.transformToWebStream === 'function') {
         return Readable.fromWeb(bodyWithTransform.transformToWebStream());
       }
 
       return response.Body as unknown as Readable;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const s3Err = err as { name?: string; $metadata?: { httpStatusCode?: number } };
       if (
-        err.name === 'NoSuchKey' ||
-        err.name === 'NotFound' ||
-        err.$metadata?.httpStatusCode === 404
+        s3Err.name === 'NoSuchKey' ||
+        s3Err.name === 'NotFound' ||
+        s3Err.$metadata?.httpStatusCode === 404
       ) {
         throw new NotFoundException(`File not found in cloud storage: ${storageKey}`);
       }
@@ -180,7 +183,9 @@ export class S3StorageService implements StorageService {
         throw new NotFoundException(`File not found in cloud storage: ${storageKey}`);
       }
 
-      const bodyWithTransform = response.Body as { transformToByteArray?: () => Promise<Uint8Array> };
+      const bodyWithTransform = response.Body as {
+        transformToByteArray?: () => Promise<Uint8Array>;
+      };
       if (typeof bodyWithTransform.transformToByteArray === 'function') {
         const byteArray = await bodyWithTransform.transformToByteArray();
         return Buffer.from(byteArray);
@@ -192,11 +197,12 @@ export class S3StorageService implements StorageService {
         chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
       }
       return Buffer.concat(chunks);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const s3Err = err as { name?: string; $metadata?: { httpStatusCode?: number } };
       if (
-        err.name === 'NoSuchKey' ||
-        err.name === 'NotFound' ||
-        err.$metadata?.httpStatusCode === 404
+        s3Err.name === 'NoSuchKey' ||
+        s3Err.name === 'NotFound' ||
+        s3Err.$metadata?.httpStatusCode === 404
       ) {
         throw new NotFoundException(`File not found in cloud storage: ${storageKey}`);
       }
@@ -231,11 +237,12 @@ export class S3StorageService implements StorageService {
         }),
       );
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const s3Err = err as { name?: string; $metadata?: { httpStatusCode?: number } };
       if (
-        err.name === 'NotFound' ||
-        err.name === 'NoSuchKey' ||
-        err.$metadata?.httpStatusCode === 404
+        s3Err.name === 'NotFound' ||
+        s3Err.name === 'NoSuchKey' ||
+        s3Err.$metadata?.httpStatusCode === 404
       ) {
         return false;
       }
@@ -253,11 +260,12 @@ export class S3StorageService implements StorageService {
         }),
       );
       return response.ContentLength ?? 0;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const s3Err = err as { name?: string; $metadata?: { httpStatusCode?: number } };
       if (
-        err.name === 'NotFound' ||
-        err.name === 'NoSuchKey' ||
-        err.$metadata?.httpStatusCode === 404
+        s3Err.name === 'NotFound' ||
+        s3Err.name === 'NoSuchKey' ||
+        s3Err.$metadata?.httpStatusCode === 404
       ) {
         throw new NotFoundException(`File not found in cloud storage: ${storageKey}`);
       }

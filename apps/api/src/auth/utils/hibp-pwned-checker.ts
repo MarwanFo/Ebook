@@ -27,7 +27,7 @@ export async function isPasswordBreached(password: string): Promise<boolean> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500);
 
-    const response: any = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
       method: 'GET',
       headers: {
         'User-Agent': 'BookFlow-Security-Audit/1.0',
