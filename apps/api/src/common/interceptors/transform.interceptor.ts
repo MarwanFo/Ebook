@@ -24,8 +24,8 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T
     ]);
 
     const ctx = context.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const response = ctx.getResponse<any>();
+    const request = ctx.getRequest<any>();
 
     // If route explicitly bypassed or is Swagger docs, pass through
     if (isBypassed || (request.url && request.url.includes('/api/docs'))) {

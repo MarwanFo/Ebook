@@ -105,7 +105,7 @@ export class CloudinaryStorageService implements StorageService {
     }
 
     try {
-      const response = await fetch(fileUrl, { headers });
+      const response: any = await fetch(fileUrl, { headers });
 
       if (response.status === 404) {
         throw new NotFoundException(`File not found in Cloudinary: ${storageKey}`);
@@ -139,7 +139,7 @@ export class CloudinaryStorageService implements StorageService {
     });
 
     try {
-      const response = await fetch(fileUrl);
+      const response: any = await fetch(fileUrl);
 
       if (response.status === 404) {
         throw new NotFoundException(`File not found in Cloudinary: ${storageKey}`);

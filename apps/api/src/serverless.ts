@@ -133,9 +133,19 @@ export default async function handler(req: any, res: any) {
     }
 
     return new Promise<void>((resolve, reject) => {
-      res.on('finish', resolve);
-      res.on('close', resolve);
-      res.on('error', reject);
+      if (typeof res.on === 'function') {
+        res.on('finish', resolve);
+        res.on('close', resolve);
+        res.on('error', reject);
+      }
+      const origEnd = typeof res.end === 'function' ? res.end.bind(res) : null;
+      res.end = function (...args: any[]) {
+        try {
+          if (origEnd) origEnd(...args);
+        } finally {
+          resolve();
+        }
+      };
       instance(req, res);
     });
   } catch (err: any) {

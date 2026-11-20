@@ -120,9 +120,21 @@ async function handler(req, res) {
             return;
         }
         return new Promise((resolve, reject) => {
-            res.on('finish', resolve);
-            res.on('close', resolve);
-            res.on('error', reject);
+            if (typeof res.on === 'function') {
+                res.on('finish', resolve);
+                res.on('close', resolve);
+                res.on('error', reject);
+            }
+            const origEnd = typeof res.end === 'function' ? res.end.bind(res) : null;
+            res.end = function (...args) {
+                try {
+                    if (origEnd)
+                        origEnd(...args);
+                }
+                finally {
+                    resolve();
+                }
+            };
             instance(req, res);
         });
     }

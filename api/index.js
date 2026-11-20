@@ -7,6 +7,7 @@ function loadHandler() {
   if (cachedHandler) return cachedHandler;
 
   const candidatePaths = [
+    path.join(__dirname, 'dist', 'src', 'serverless.js'),
     path.join(__dirname, '..', 'apps', 'api', 'api', 'dist', 'src', 'serverless.js'),
     path.join(__dirname, '..', 'apps', 'api', 'dist', 'src', 'serverless.js'),
     path.join(process.cwd(), 'apps', 'api', 'api', 'dist', 'src', 'serverless.js'),
