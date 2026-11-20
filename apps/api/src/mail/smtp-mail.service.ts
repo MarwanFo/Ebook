@@ -28,7 +28,22 @@ export class SmtpMailService implements MailService {
       port,
       secure: port === 465,
       auth: user && pass ? { user, pass } : undefined,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
+
+    if (host === 'localhost' || !user || !pass) {
+      this.logger.warn(
+        `[SMTP CONFIG WARNING] SMTP credentials not fully configured (host: ${host}, user: ${
+          user ? 'SET' : 'MISSING'
+        }, pass: ${
+          pass ? 'SET' : 'MISSING'
+        }). Real emails will NOT be sent unless SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASSWORD are defined in environment variables.`,
+      );
+    } else {
+      this.logger.log(`[SMTP CONFIG] Mailer initialized with host: ${host}:${port}, user: ${user}`);
+    }
   }
 
   /**

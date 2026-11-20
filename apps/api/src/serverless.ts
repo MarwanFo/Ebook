@@ -154,13 +154,19 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString() }));
   }
 
-  // Diagnostic endpoint to inspect getApp bootstrap directly
-  if (req.url === '/api/v1/debug' || req.url === '/debug') {
+  // Diagnostic endpoint to inspect getApp bootstrap and environment directly
+  if (req.url?.startsWith('/api/v1/debug') || req.url?.startsWith('/debug')) {
     const envStatus = {
       hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
       hasDirectUrl: Boolean(process.env.DIRECT_URL),
       hasJwtSecret: Boolean(process.env.JWT_ACCESS_SECRET),
       hasWebOrigin: Boolean(process.env.WEB_ORIGIN),
+      hasSmtpHost: Boolean(process.env.SMTP_HOST),
+      hasSmtpPort: Boolean(process.env.SMTP_PORT),
+      hasSmtpUser: Boolean(process.env.SMTP_USER),
+      hasSmtpPassword: Boolean(process.env.SMTP_PASSWORD),
+      smtpHost: process.env.SMTP_HOST || 'localhost (default)',
+      smtpPort: process.env.SMTP_PORT || '1025 (default)',
       nodeEnv: process.env.NODE_ENV || 'unset',
       isVercel: Boolean(process.env.VERCEL),
     };
@@ -169,6 +175,31 @@ export default async function handler(req: any, res: any) {
       const app = await getApp();
       const prisma = app.get(PrismaService);
       const dbAlive = await prisma.ping();
+
+      let smtpCheck: any = null;
+      if (req.url?.includes('checkSmtp=true')) {
+        try {
+          const nodemailer = await import('nodemailer');
+          const host = process.env.SMTP_HOST || 'localhost';
+          const port = parseInt(process.env.SMTP_PORT || '1025', 10);
+          const user = process.env.SMTP_USER;
+          const pass = process.env.SMTP_PASSWORD;
+          const transporter = nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: user && pass ? { user, pass } : undefined,
+            connectionTimeout: 8000,
+            greetingTimeout: 8000,
+            socketTimeout: 8000,
+          });
+          await transporter.verify();
+          smtpCheck = { success: true, message: 'SMTP connection and authentication verified' };
+        } catch (smtpErr: any) {
+          smtpCheck = { success: false, error: smtpErr?.message || String(smtpErr) };
+        }
+      }
+
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       return res.end(
@@ -178,6 +209,7 @@ export default async function handler(req: any, res: any) {
           appReady: !!app,
           dbAlive,
           dbError: prisma.lastPingError,
+          smtpCheck,
           env: envStatus,
         }),
       );

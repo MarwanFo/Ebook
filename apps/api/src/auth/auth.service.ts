@@ -245,17 +245,17 @@ export class AuthService {
         // Dispatch security notification to the existing account owner (anti-takeover / anti-enumeration)
         const loginUrl = `${this.webOrigin}/login`;
         const resetUrl = `${this.webOrigin}/forgot-password`;
-        this.mailService
-          .sendRegistrationAttemptAlert({
+        try {
+          await this.mailService.sendRegistrationAttemptAlert({
             email: dto.email,
             loginUrl,
             resetUrl,
-          })
-          .catch((mailErr) =>
-            this.logger.error(
-              `Failed to send duplicate registration alert email: ${(mailErr as Error).message}`,
-            ),
+          });
+        } catch (mailErr) {
+          this.logger.error(
+            `Failed to send duplicate registration alert email: ${(mailErr as Error).message}`,
           );
+        }
       }
       throw err;
     }
@@ -267,16 +267,16 @@ export class AuthService {
     try {
       const { rawToken, otp } = await this.createEmailVerificationToken(user.id);
       const verificationUrl = `${this.webOrigin}/verify-email?token=${rawToken}`;
-      this.mailService
-        .sendEmailVerification({
+      try {
+        await this.mailService.sendEmailVerification({
           email: user.email,
           verificationUrl,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           otp,
-        })
-        .catch((err) =>
-          this.logger.error(`Failed to send email verification: ${(err as Error).message}`),
-        );
+        });
+      } catch (err) {
+        this.logger.error(`Failed to send email verification: ${(err as Error).message}`);
+      }
     } catch (err) {
       this.logger.error(`Failed to create verification token: ${(err as Error).message}`);
     }
@@ -547,13 +547,15 @@ export class AuthService {
       });
     });
 
-    // Dispatched asynchronously without sensitive information
-    this.mailService
-      .sendPasswordChanged({
+    // Dispatched with error capture
+    try {
+      await this.mailService.sendPasswordChanged({
         email: user.email,
         timestamp: now,
-      })
-      .catch((err) => this.logger.error(`Failed to send password changed email: ${err.message}`));
+      });
+    } catch (err) {
+      this.logger.error(`Failed to send password changed email: ${(err as Error).message}`);
+    }
 
     return {
       message: 'Your password has been changed successfully. Please log in again.',
@@ -607,14 +609,16 @@ export class AuthService {
     const resetUrl = `${this.webOrigin}/reset-password?token=${rawToken}`;
 
     // Dispatched via MailService (Mailpit in dev, SMTP in prod)
-    this.mailService
-      .sendPasswordReset({
+    try {
+      await this.mailService.sendPasswordReset({
         email: user.email,
         resetUrl,
         expiresAt,
         otp,
-      })
-      .catch((err) => this.logger.error(`Failed to send password reset email: ${err.message}`));
+      });
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email: ${(err as Error).message}`);
+    }
 
     return genericResponse;
   }
@@ -715,12 +719,14 @@ export class AuthService {
       });
     });
 
-    this.mailService
-      .sendPasswordChanged({
+    try {
+      await this.mailService.sendPasswordChanged({
         email: resetToken.user.email,
         timestamp: now,
-      })
-      .catch((err) => this.logger.error(`Failed to send password changed email: ${err.message}`));
+      });
+    } catch (err) {
+      this.logger.error(`Failed to send password changed email: ${(err as Error).message}`);
+    }
 
     return {
       message: 'Your password has been successfully reset. Please log in with your new password.',
@@ -870,16 +876,16 @@ export class AuthService {
     const verificationUrl = `${this.webOrigin}/verify-email?token=${rawToken}`;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    this.mailService
-      .sendEmailVerification({
+    try {
+      await this.mailService.sendEmailVerification({
         email: user.email,
         verificationUrl,
         expiresAt,
         otp,
-      })
-      .catch((err) =>
-        this.logger.error(`Failed to dispatch verification email: ${(err as Error).message}`),
-      );
+      });
+    } catch (err) {
+      this.logger.error(`Failed to dispatch verification email: ${(err as Error).message}`);
+    }
 
     return genericResponse;
   }
