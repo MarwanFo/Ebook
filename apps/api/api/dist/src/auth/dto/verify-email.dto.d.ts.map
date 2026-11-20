@@ -1,1 +1,0 @@
-{"version":3,"file":"verify-email.dto.d.ts","sourceRoot":"","sources":["../../../../src/auth/dto/verify-email.dto.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,cAAc,IAAI,eAAe,EAAE,MAAM,wBAAwB,CAAC;AAE3E,qBAAa,cAAe,YAAW,eAAe;IAMpD,KAAK,CAAC,EAAE,MAAM,CAAC;IAOf,KAAK,CAAC,EAAE,MAAM,CAAC;IASf,GAAG,CAAC,EAAE,MAAM,CAAC;CACd"}

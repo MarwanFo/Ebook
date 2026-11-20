@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main",
-    "build": "prisma generate && nest build && node -e \"const fs=require('fs'); fs.cpSync('dist', 'api/dist', {recursive:true});\"",
+    "build": "prisma generate && nest build",
     "postinstall": "prisma generate",
     "lint": "eslint src test --ext .ts",
     "typecheck": "tsc --noEmit",
