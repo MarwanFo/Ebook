@@ -1,0 +1,1 @@
+{"version":3,"file":"create-bookmark.dto.d.ts","sourceRoot":"","sources":["../../../../src/reading/dto/create-bookmark.dto.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,MAAM,wBAAwB,CAAC;AAGtD,qBAAa,iBAAiB;IAE5B,YAAY,EAAE,YAAY,CAAC;IAG3B,aAAa,EAAE,MAAM,CAAC;IAKtB,kBAAkB,EAAE,MAAM,CAAC;IAK3B,KAAK,CAAC,EAAE,MAAM,CAAC;IAKf,IAAI,CAAC,EAAE,MAAM,CAAC;CACf"}
