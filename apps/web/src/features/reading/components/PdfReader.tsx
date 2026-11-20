@@ -296,8 +296,10 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
   const computeScale = useCallback(
     (pageWidth: number, pageHeight: number, isTwoPage: boolean) => {
       if (!containerRef.current) return zoom;
-      const containerWidth = containerRef.current.clientWidth - 48; // padding
-      const containerHeight = containerRef.current.clientHeight - 48;
+      const isSmall = typeof window !== 'undefined' && window.innerWidth < 640;
+      const padding = isSmall ? 16 : 48;
+      const containerWidth = Math.max(200, containerRef.current.clientWidth - padding);
+      const containerHeight = Math.max(200, containerRef.current.clientHeight - padding);
 
       if (zoomMode === 'fit-width') {
         const availableWidth = isTwoPage ? containerWidth / 2 : containerWidth;
@@ -451,7 +453,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
       <main
         ref={containerRef}
         className={`relative flex-1 w-full flex items-center justify-center ${
-          viewMode === 'flipbook' ? 'p-1 sm:p-2 overflow-hidden' : 'p-4 sm:p-6 overflow-auto'
+          viewMode === 'flipbook' ? 'p-1 sm:p-2 overflow-hidden' : 'p-2 sm:p-6 overflow-auto'
         }`}
       >
         {/* Loading Spinner */}

@@ -57,14 +57,14 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
   return (
     <header
-      className={`h-14 px-3 sm:px-6 border-b flex items-center justify-between transition-colors duration-200 z-30 select-none ${headerThemeClasses}`}
+      className={`h-14 px-2.5 sm:px-6 border-b flex items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 z-30 select-none ${headerThemeClasses}`}
     >
       {/* Left Section: Back button & Book Metadata */}
-      <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+      <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 flex-1">
         <button
           type="button"
           onClick={() => navigate('/')}
-          className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs sm:text-sm font-medium ${buttonHoverClasses}`}
+          className={`p-1.5 sm:p-2 rounded-lg transition-colors flex items-center gap-1.5 text-xs sm:text-sm font-medium flex-shrink-0 ${buttonHoverClasses}`}
           title="Back to Library"
           aria-label="Back to Library"
         >
@@ -72,7 +72,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <span className="hidden sm:inline">Library</span>
         </button>
 
-        <div className="h-4 w-px bg-current opacity-20 hidden sm:block" />
+        <div className="h-4 w-px bg-current opacity-20 hidden sm:block flex-shrink-0" />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -90,12 +90,12 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
       </div>
 
       {/* Right Section: Action Controls */}
-      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+      <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
         {/* Table of Contents Button */}
         <button
           type="button"
           onClick={onToggleToc}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
             isTocOpen ? activeBtnClasses : buttonHoverClasses
           }`}
           title="Table of Contents"
@@ -109,7 +109,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <button
             type="button"
             onClick={onToggleBookmarks}
-            className={`p-2 rounded-lg transition-colors relative ${
+            className={`p-1.5 sm:p-2 rounded-lg transition-colors relative ${
               isBookmarksOpen ? activeBtnClasses : buttonHoverClasses
             }`}
             title="Bookmarks and Notes"
@@ -128,7 +128,7 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
         <button
           type="button"
           onClick={onToggleSettings}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
             isSettingsOpen ? activeBtnClasses : buttonHoverClasses
           }`}
           title="Display Settings"
@@ -137,11 +137,11 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           <Sliders className="w-4 h-4" />
         </button>
 
-        {/* Fullscreen Toggle */}
+        {/* Fullscreen Toggle (Hidden on small mobile) */}
         <button
           type="button"
           onClick={onToggleFullscreen}
-          className={`p-2 rounded-lg transition-colors ${buttonHoverClasses}`}
+          className={`hidden sm:flex p-1.5 sm:p-2 rounded-lg transition-colors ${buttonHoverClasses}`}
           title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
           aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
         >
