@@ -14,7 +14,10 @@ export async function getApp() {
     return appInstance;
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    abortOnError: false,
+    logger: ['error', 'warn'],
+  });
 
   const expressApp = app.getHttpAdapter().getInstance();
   if (typeof expressApp.set === 'function') {
@@ -134,13 +137,26 @@ export default async function handler(req: any, res: any) {
 
   // Diagnostic endpoint to inspect getApp bootstrap directly
   if (req.url === '/api/v1/debug' || req.url === '/debug') {
+    const envStatus = {
+      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+      hasDirectUrl: Boolean(process.env.DIRECT_URL),
+      hasJwtSecret: Boolean(process.env.JWT_ACCESS_SECRET),
+      hasWebOrigin: Boolean(process.env.WEB_ORIGIN),
+      nodeEnv: process.env.NODE_ENV || 'unset',
+      isVercel: Boolean(process.env.VERCEL),
+    };
     try {
       const t0 = Date.now();
       const app = await getApp();
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       return res.end(
-        JSON.stringify({ status: 'ok', durationMs: Date.now() - t0, appReady: !!app }),
+        JSON.stringify({
+          status: 'ok',
+          durationMs: Date.now() - t0,
+          appReady: !!app,
+          env: envStatus,
+        }),
       );
     } catch (err: any) {
       res.statusCode = 500;
@@ -150,6 +166,7 @@ export default async function handler(req: any, res: any) {
           status: 'error',
           error: err?.message || String(err),
           stack: err?.stack,
+          env: envStatus,
         }),
       );
     }
