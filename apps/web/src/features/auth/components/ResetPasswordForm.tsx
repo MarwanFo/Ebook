@@ -106,6 +106,11 @@ export const ResetPasswordForm: React.FC = () => {
             ? 'Please enter your new secure passphrase (at least 15 characters).'
             : 'Enter your email address, the 6-digit code from your email, and your new passphrase.'}
         </p>
+        {!token && (
+          <p className="mt-1.5 text-xs text-text-muted/80">
+            Cannot find the email? Be sure to check your spam or junk folder.
+          </p>
+        )}
       </div>
 
       {formError && (

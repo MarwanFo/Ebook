@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Send,
   ShieldCheck,
+  Info,
 } from 'lucide-react';
 
 export const VerifyEmailPage: React.FC = () => {
@@ -178,14 +179,24 @@ export const VerifyEmailPage: React.FC = () => {
               </p>
             </div>
 
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs text-left flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <span className="font-semibold text-text">Don&apos;t see the email?</span> Be sure
+                to check your <strong className="text-primary font-semibold">Spam or Junk</strong>{' '}
+                folder. If found there, click &ldquo;Report not spam&rdquo; so future emails reach
+                your inbox.
+              </div>
+            </div>
+
             {resendSent && (
               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 text-xs sm:text-sm text-left flex items-start gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">Verification link sent!</p>
                   <p className="mt-1 text-text-muted">
-                    If an unverified account matches that address, check your inbox for the 6-digit
-                    code or link.
+                    If an unverified account matches that address, check your inbox (or spam folder)
+                    for the 6-digit code or link.
                   </p>
                 </div>
               </div>
