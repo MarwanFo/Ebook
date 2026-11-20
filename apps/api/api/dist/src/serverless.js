@@ -69,6 +69,47 @@ async function handler(req, res) {
     if (!req.ip) {
         req.ip = req.socket.remoteAddress;
     }
+    // Defensive header wrappers for serverless runtimes
+    res._headers = res._headers || {};
+    const origGetHeader = typeof res.getHeader === 'function' ? res.getHeader.bind(res) : null;
+    res.getHeader = function (name) {
+        try {
+            if (origGetHeader) {
+                const val = origGetHeader(name);
+                if (val !== undefined)
+                    return val;
+            }
+        }
+        catch {
+            // Ignore internal Node symbol errors
+        }
+        return res._headers[name.toLowerCase()] || res._headers[name];
+    };
+    const origRemoveHeader = typeof res.removeHeader === 'function' ? res.removeHeader.bind(res) : null;
+    res.removeHeader = function (name) {
+        try {
+            if (origRemoveHeader)
+                origRemoveHeader(name);
+        }
+        catch {
+            // Ignore
+        }
+        delete res._headers[name.toLowerCase()];
+        delete res._headers[name];
+    };
+    const origSetHeader = typeof res.setHeader === 'function' ? res.setHeader.bind(res) : null;
+    res.setHeader = function (name, value) {
+        res._headers[name.toLowerCase()] = value;
+        res._headers[name] = value;
+        try {
+            if (origSetHeader)
+                origSetHeader(name, value);
+        }
+        catch {
+            // Ignore
+        }
+        return this;
+    };
     const origin = req.headers?.origin || 'https://ebook-olive-one.vercel.app';
     // Always set full CORS headers on every response
     res.setHeader('Access-Control-Allow-Origin', origin);
