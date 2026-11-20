@@ -38,7 +38,8 @@ export default () => ({
   },
   storage: {
     driver: process.env.STORAGE_DRIVER || 'local',
-    localPath: process.env.LOCAL_STORAGE_PATH || './storage',
+    localPath:
+      process.env.LOCAL_STORAGE_PATH || (process.env.VERCEL ? '/tmp/storage' : './storage'),
     maxFileSizeMb: parseInt(process.env.MAX_BOOK_FILE_SIZE_MB || '100', 10),
     s3: {
       endpoint: process.env.S3_ENDPOINT,

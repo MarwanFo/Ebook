@@ -11,14 +11,19 @@ export class LocalStorageService implements StorageService {
   private readonly basePath: string;
 
   constructor(private readonly configService: ConfigService) {
-    const rawPath = this.configService.get<string>('storage.localPath') || './storage';
-    this.basePath = path.resolve(process.cwd(), rawPath);
+    const defaultPath = process.env.VERCEL ? '/tmp/storage' : './storage';
+    const rawPath = this.configService.get<string>('storage.localPath') || defaultPath;
+    this.basePath = path.isAbsolute(rawPath) ? rawPath : path.resolve(process.cwd(), rawPath);
     this.ensureDirectoryExists(this.basePath);
   }
 
   private ensureDirectoryExists(dir: string): void {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch (err) {
+      this.logger.warn(`Could not create storage directory ${dir}: ${(err as Error).message}`);
     }
   }
 
