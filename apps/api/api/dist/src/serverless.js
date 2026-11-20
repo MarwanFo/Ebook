@@ -8,11 +8,19 @@ exports.default = handler;
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
-const helmet_1 = __importDefault(require("helmet"));
 const app_module_1 = require("./app.module");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 const logging_interceptor_1 = require("./common/interceptors/logging.interceptor");
 const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter");
+// Ensure required environment variables for Prisma and JWT
+if (!process.env.DATABASE_URL) {
+    process.env.DATABASE_URL =
+        'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require';
+}
+if (!process.env.JWT_ACCESS_SECRET) {
+    process.env.JWT_ACCESS_SECRET =
+        'bookflow_dev_access_secret_key_minimum_32_characters_long';
+}
 let appInstance;
 async function getApp() {
     if (appInstance) {
@@ -23,10 +31,6 @@ async function getApp() {
     if (typeof expressApp.set === 'function') {
         expressApp.set('trust proxy', 1);
     }
-    app.use((0, helmet_1.default)({
-        contentSecurityPolicy: false,
-        crossOriginResourcePolicy: { policy: 'cross-origin' },
-    }));
     app.use((0, cookie_parser_1.default)());
     app.enableCors({
         origin: true,
@@ -52,6 +56,19 @@ async function getApp() {
     return appInstance;
 }
 async function handler(req, res) {
+    // Ensure req.socket and req.ip are present in serverless environments
+    if (!req.socket) {
+        req.socket = {};
+    }
+    if (!req.socket.remoteAddress) {
+        req.socket.remoteAddress =
+            req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+                req.headers?.['x-real-ip'] ||
+                '127.0.0.1';
+    }
+    if (!req.ip) {
+        req.ip = req.socket.remoteAddress;
+    }
     const origin = req.headers?.origin || 'https://ebook-olive-one.vercel.app';
     // Always set full CORS headers on every response
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -67,7 +84,15 @@ async function handler(req, res) {
     try {
         const app = await getApp();
         const instance = app.getHttpAdapter().getInstance();
-        return instance(req, res);
+        if (res.writableEnded) {
+            return;
+        }
+        return new Promise((resolve, reject) => {
+            res.on('finish', resolve);
+            res.on('close', resolve);
+            res.on('error', reject);
+            instance(req, res);
+        });
     }
     catch (err) {
         console.error('Serverless bootstrap error:', err);

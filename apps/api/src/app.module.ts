@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod, Injectable } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -14,6 +14,19 @@ import { BooksModule } from './books/books.module';
 import { ReadingModule } from './reading/reading.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+
+@Injectable()
+export class SafeThrottlerGuard extends ThrottlerGuard {
+  protected async getTracker(req: Record<string, any>): Promise<string> {
+    return (
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (req.headers?.['x-real-ip'] as string) ||
+      req.ip ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1'
+    );
+  }
+}
 
 @Module({
   imports: [
@@ -45,7 +58,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
     },
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: SafeThrottlerGuard,
     },
   ],
 })

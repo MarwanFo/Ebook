@@ -9,7 +9,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = void 0;
+exports.AppModule = exports.SafeThrottlerGuard = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
@@ -26,6 +26,19 @@ const books_module_1 = require("./books/books.module");
 const reading_module_1 = require("./reading/reading.module");
 const jwt_auth_guard_1 = require("./auth/guards/jwt-auth.guard");
 const request_id_middleware_1 = require("./common/middleware/request-id.middleware");
+let SafeThrottlerGuard = class SafeThrottlerGuard extends throttler_1.ThrottlerGuard {
+    async getTracker(req) {
+        return (req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+            req.headers?.['x-real-ip'] ||
+            req.ip ||
+            req.socket?.remoteAddress ||
+            '127.0.0.1');
+    }
+};
+exports.SafeThrottlerGuard = SafeThrottlerGuard;
+exports.SafeThrottlerGuard = SafeThrottlerGuard = __decorate([
+    (0, common_1.Injectable)()
+], SafeThrottlerGuard);
 let AppModule = class AppModule {
     configure(consumer) {
         consumer.apply(request_id_middleware_1.RequestIdMiddleware).forRoutes({ path: '*', method: common_1.RequestMethod.ALL });
@@ -63,7 +76,7 @@ exports.AppModule = AppModule = __decorate([
             },
             {
                 provide: core_1.APP_GUARD,
-                useClass: throttler_1.ThrottlerGuard,
+                useClass: SafeThrottlerGuard,
             },
         ],
     })

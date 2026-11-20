@@ -30,7 +30,20 @@ function loadHandler() {
 }
 
 module.exports = async (req, res) => {
-  const origin = req.headers?.origin || '*';
+  if (!req.socket) {
+    req.socket = {};
+  }
+  if (!req.socket.remoteAddress) {
+    req.socket.remoteAddress =
+      req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.headers?.['x-real-ip'] ||
+      '127.0.0.1';
+  }
+  if (!req.ip) {
+    req.ip = req.socket.remoteAddress;
+  }
+
+  const origin = req.headers?.origin || 'https://ebook-olive-one.vercel.app';
 
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');

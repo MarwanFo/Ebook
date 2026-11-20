@@ -7,6 +7,16 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
+// Ensure required environment variables for Prisma and JWT
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL =
+    'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require';
+}
+if (!process.env.JWT_ACCESS_SECRET) {
+  process.env.JWT_ACCESS_SECRET =
+    'bookflow_dev_access_secret_key_minimum_32_characters_long';
+}
+
 let appInstance: any;
 
 export async function getApp() {
@@ -20,13 +30,6 @@ export async function getApp() {
   if (typeof expressApp.set === 'function') {
     expressApp.set('trust proxy', 1);
   }
-
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-    }),
-  );
 
   app.use(cookieParser());
 
@@ -61,6 +64,20 @@ export async function getApp() {
 }
 
 export default async function handler(req: any, res: any) {
+  // Ensure req.socket and req.ip are present in serverless environments
+  if (!req.socket) {
+    req.socket = {} as any;
+  }
+  if (!req.socket.remoteAddress) {
+    req.socket.remoteAddress =
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.headers?.['x-real-ip'] ||
+      '127.0.0.1';
+  }
+  if (!req.ip) {
+    req.ip = req.socket.remoteAddress;
+  }
+
   const origin = req.headers?.origin || 'https://ebook-olive-one.vercel.app';
 
   // Always set full CORS headers on every response
@@ -82,7 +99,17 @@ export default async function handler(req: any, res: any) {
   try {
     const app = await getApp();
     const instance = app.getHttpAdapter().getInstance();
-    return instance(req, res);
+    
+    if (res.writableEnded) {
+      return;
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      res.on('finish', resolve);
+      res.on('close', resolve);
+      res.on('error', reject);
+      instance(req, res);
+    });
   } catch (err: any) {
     console.error('Serverless bootstrap error:', err);
     res.statusCode = 500;
