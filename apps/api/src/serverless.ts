@@ -61,7 +61,38 @@ export async function getApp() {
 }
 
 export default async function handler(req: any, res: any) {
-  const app = await getApp();
-  const instance = app.getHttpAdapter().getInstance();
-  return instance(req, res);
+  const origin = req.headers?.origin || '*';
+
+  // Handle CORS preflight immediately
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type,Authorization,x-request-id,Accept,Origin',
+    );
+    res.setHeader('Access-Control-Max-Age', '86400');
+    return res.end();
+  }
+
+  try {
+    const app = await getApp();
+    const instance = app.getHttpAdapter().getInstance();
+    return instance(req, res);
+  } catch (err: any) {
+    console.error('Serverless bootstrap error:', err);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    return res.end(
+      JSON.stringify({
+        error: 'SERVERLESS_BOOTSTRAP_ERROR',
+        message: err?.message || String(err),
+        stack: err?.stack,
+      }),
+    );
+  }
 }
