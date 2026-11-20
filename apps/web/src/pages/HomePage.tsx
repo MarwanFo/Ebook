@@ -24,7 +24,6 @@ import { UploadModal } from '../features/books/components/UploadModal';
 import { BookDetailModal } from '../features/books/components/BookDetailModal';
 import { formatBookTitle } from '../features/books/components/RealisticBookCover';
 import { ConfirmModal } from '../components/common/ConfirmModal';
-import { ApiHealthStatus } from '../components/health/ApiHealthStatus';
 import { Card } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 
@@ -374,9 +373,6 @@ export const HomePage: React.FC = () => {
           </span>
         </div>
       </div>
-
-      {/* Backend Health Probe Status */}
-      <ApiHealthStatus />
 
       {/* Curated Architectural Plates */}
       <div>
