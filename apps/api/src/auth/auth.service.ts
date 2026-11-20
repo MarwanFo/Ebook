@@ -86,11 +86,14 @@ export class AuthService {
         formData.append('remoteip', remoteIp);
       }
 
-      const response: any = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString(),
-      });
+      const response: any = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData.toString(),
+        },
+      );
 
       if (!response.ok) {
         this.logger.warn(`Turnstile API returned non-OK status: ${response.status}`);

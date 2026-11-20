@@ -83,7 +83,8 @@ export default async function handler(req: any, res: any) {
     return res._headers[name.toLowerCase()] || res._headers[name];
   };
 
-  const origRemoveHeader = typeof res.removeHeader === 'function' ? res.removeHeader.bind(res) : null;
+  const origRemoveHeader =
+    typeof res.removeHeader === 'function' ? res.removeHeader.bind(res) : null;
   res.removeHeader = function (name: string) {
     try {
       if (origRemoveHeader) origRemoveHeader(name);
@@ -137,7 +138,7 @@ export default async function handler(req: any, res: any) {
     const app = await getApp();
     console.log(`[Serverless] App acquired in ${Date.now() - startTime}ms`);
     const instance = app.getHttpAdapter().getInstance();
-    
+
     if (res.writableEnded) {
       return;
     }
