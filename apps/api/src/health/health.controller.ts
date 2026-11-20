@@ -1,4 +1,4 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HealthCheckResponse, ReadinessCheckResponse } from '@bookflow/shared-types';
 import { PrismaService } from '../database/prisma.service';
@@ -7,6 +7,8 @@ import { Public } from '../auth/decorators/public.decorator';
 @ApiTags('Operations')
 @Controller()
 export class HealthController {
+  private readonly logger = new Logger(HealthController.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   @Public()
@@ -73,9 +75,10 @@ export class HealthController {
     const isDbConnected = await this.prisma.ping();
 
     if (!isDbConnected) {
-      throw new ServiceUnavailableException(
+      this.logger.error(
         `Database connection check failed: ${this.prisma.lastPingError || 'Connection unavailable'}`,
       );
+      throw new ServiceUnavailableException('Database connection check failed');
     }
 
     return {
