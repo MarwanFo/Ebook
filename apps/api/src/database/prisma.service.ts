@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
+  public lastPingError: string | null = null;
 
   constructor() {
     super({
@@ -44,9 +45,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async ping(): Promise<boolean> {
     try {
       await this.$queryRaw`SELECT 1`;
+      this.lastPingError = null;
       return true;
     } catch (error) {
-      this.logger.error(`Database ping failed: ${(error as Error).message}`);
+      this.lastPingError = (error as Error).message;
+      this.logger.error(`Database ping failed: ${this.lastPingError}`);
       return false;
     }
   }

@@ -73,7 +73,9 @@ export class HealthController {
     const isDbConnected = await this.prisma.ping();
 
     if (!isDbConnected) {
-      throw new ServiceUnavailableException('Database connection check failed');
+      throw new ServiceUnavailableException(
+        `Database connection check failed: ${this.prisma.lastPingError || 'Connection unavailable'}`,
+      );
     }
 
     return {

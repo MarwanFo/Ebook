@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { PrismaService } from './database/prisma.service';
 
 let appInstance: any;
 
@@ -148,6 +149,8 @@ export default async function handler(req: any, res: any) {
     try {
       const t0 = Date.now();
       const app = await getApp();
+      const prisma = app.get(PrismaService);
+      const dbAlive = await prisma.ping();
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
       return res.end(
@@ -155,6 +158,8 @@ export default async function handler(req: any, res: any) {
           status: 'ok',
           durationMs: Date.now() - t0,
           appReady: !!app,
+          dbAlive,
+          dbError: prisma.lastPingError,
           env: envStatus,
         }),
       );
