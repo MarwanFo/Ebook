@@ -19,6 +19,7 @@ describe('Authentication & Session Hardening (e2e)', () => {
   const usersTable = new Map<string, any>();
   const refreshTokensTable = new Map<string, any>();
   const passwordResetTokensTable = new Map<string, any>();
+  const emailVerificationTokensTable = new Map<string, any>();
 
   const inMemoryPrisma: any = {
     $connect: jest.fn().mockResolvedValue(undefined),
@@ -156,6 +157,73 @@ describe('Authentication & Session Hardening (e2e)', () => {
         if (!record) throw new Error('Reset token not found');
         const updated = { ...record, ...data };
         passwordResetTokensTable.set(where.id, updated);
+        return updated;
+      }),
+    },
+
+    emailVerificationToken: {
+      create: jest.fn(async ({ data }: any) => {
+        const id = `verify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const record = {
+          id,
+          ...data,
+          createdAt: new Date(),
+          usedAt: null,
+        };
+        emailVerificationTokensTable.set(id, record);
+        return record;
+      }),
+      findUnique: jest.fn(async ({ where, include }: any) => {
+        let record = null;
+        if (where.id) record = emailVerificationTokensTable.get(where.id) || null;
+        if (where.tokenHash) {
+          for (const r of emailVerificationTokensTable.values()) {
+            if (r.tokenHash === where.tokenHash) {
+              record = r;
+              break;
+            }
+          }
+        }
+        if (record && include?.user) {
+          const user = usersTable.get(record.userId);
+          return { ...record, user };
+        }
+        return record;
+      }),
+      findFirst: jest.fn(async ({ where, include }: any) => {
+        let record = null;
+        for (const r of emailVerificationTokensTable.values()) {
+          let match = true;
+          if (where.userId && r.userId !== where.userId) match = false;
+          if (where.otpHash && r.otpHash !== where.otpHash) match = false;
+          if (where.usedAt === null && r.usedAt !== null) match = false;
+          if (where.expiresAt?.gt && r.expiresAt <= where.expiresAt.gt) match = false;
+          if (match) {
+            record = r;
+            break;
+          }
+        }
+        if (record && include?.user) {
+          const user = usersTable.get(record.userId);
+          return { ...record, user };
+        }
+        return record;
+      }),
+      deleteMany: jest.fn(async ({ where }: any) => {
+        let count = 0;
+        for (const [id, r] of emailVerificationTokensTable.entries()) {
+          if (where.userId && r.userId === where.userId) {
+            emailVerificationTokensTable.delete(id);
+            count++;
+          }
+        }
+        return { count };
+      }),
+      update: jest.fn(async ({ where, data }: any) => {
+        const record = emailVerificationTokensTable.get(where.id);
+        if (!record) throw new Error('Verification token not found');
+        const updated = { ...record, ...data };
+        emailVerificationTokensTable.set(where.id, updated);
         return updated;
       }),
     },
@@ -414,14 +482,18 @@ describe('Authentication & Session Hardening (e2e)', () => {
       // Verify email was received by TestMailService
       const sent = testMailService.getSentEmails();
       expect(sent.length).toBeGreaterThan(0);
-      const resetEmail = sent.find((e) => e.to === 'e2e_reader@example.com');
+      const resetEmail = sent.find(
+        (e) => e.to === 'e2e_reader@example.com' && e.text.includes('/reset-password?token='),
+      );
       expect(resetEmail).toBeDefined();
       expect(resetEmail?.text).toContain('/reset-password?token=');
     });
 
     it('should reset password using token from mail service and allow login with new password', async () => {
       const sent = testMailService.getSentEmails();
-      const resetEmail = sent.find((e) => e.to === 'e2e_reader@example.com');
+      const resetEmail = sent.find(
+        (e) => e.to === 'e2e_reader@example.com' && e.text.includes('/reset-password?token='),
+      );
       const resetUrl = resetEmail?.text || '';
       const tokenMatch = resetUrl.match(/token=([a-f0-9]+)/);
       expect(tokenMatch).toBeDefined();

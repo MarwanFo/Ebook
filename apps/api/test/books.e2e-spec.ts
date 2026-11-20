@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -213,6 +214,7 @@ describe('Books Subsystem (e2e)', () => {
     await app.init();
 
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    const configService = moduleFixture.get<ConfigService>(ConfigService);
     testAccessToken = jwtService.sign(
       {
         sub: testUserId,
@@ -220,9 +222,12 @@ describe('Books Subsystem (e2e)', () => {
         role: 'USER',
       },
       {
-        secret: 'bookflow_dev_access_secret_key_minimum_32_characters_long',
-        issuer: 'bookflow-api',
-        audience: 'bookflow-client',
+        secret:
+          configService.get<string>('jwt.accessSecret') ||
+          process.env.JWT_ACCESS_SECRET ||
+          'bookflow_dev_access_secret_key_minimum_32_characters_long',
+        issuer: configService.get<string>('jwt.issuer') || 'bookflow-api',
+        audience: configService.get<string>('jwt.audience') || 'bookflow-client',
         expiresIn: '15m',
       },
     );
