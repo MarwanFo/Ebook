@@ -43,11 +43,34 @@ async function rawRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
-    credentials: 'include',
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      credentials: 'include',
+      ...options,
+      headers,
+    });
+  } catch (netErr) {
+    // If request to custom API URL failed (e.g. CORS or network error on secondary domain), failover to same-origin
+    if (
+      url.startsWith('http') &&
+      typeof window !== 'undefined' &&
+      !url.includes(window.location.hostname)
+    ) {
+      const fallbackUrl = `/api/v1${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+      try {
+        response = await fetch(fallbackUrl, {
+          credentials: 'include',
+          ...options,
+          headers,
+        });
+      } catch {
+        throw netErr;
+      }
+    } else {
+      throw netErr;
+    }
+  }
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
   const responseData = isJson ? await response.json() : null;
