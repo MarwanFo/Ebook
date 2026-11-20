@@ -35,6 +35,25 @@ export const VerifyEmailPage: React.FC = () => {
   const [resendSent, setResendSent] = useState(false);
 
   useEffect(() => {
+    if (user?.isEmailVerified) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (user && !user.isEmailVerified) {
+      authApi
+        .getMe()
+        .then((res) => {
+          if (res?.user?.isEmailVerified) {
+            setUser(res.user);
+            navigate('/', { replace: true });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user, setUser, navigate]);
+
+  useEffect(() => {
     if (!token) {
       setStatus('idle');
       return;
@@ -50,6 +69,9 @@ export const VerifyEmailPage: React.FC = () => {
         if (user) {
           setUser({ ...user, isEmailVerified: true });
         }
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 1200);
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -64,7 +86,7 @@ export const VerifyEmailPage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [token, user, setUser]);
+  }, [token, user, setUser, navigate]);
 
   const handleVerifyOtp = async (codeToVerify?: string) => {
     const code = codeToVerify || otp;
@@ -90,6 +112,9 @@ export const VerifyEmailPage: React.FC = () => {
       if (user) {
         setUser({ ...user, isEmailVerified: true });
       }
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1200);
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : 'Invalid or expired verification code.');
     } finally {

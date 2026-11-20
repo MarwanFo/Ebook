@@ -800,6 +800,11 @@ export class AuthService {
       });
 
       if (!record) {
+        if (user.isEmailVerified) {
+          return {
+            message: 'Email address has already been verified. Your account is fully activated.',
+          };
+        }
         throw new BadRequestException('No pending verification found for this email.');
       }
 
@@ -827,6 +832,11 @@ export class AuthService {
     }
 
     if (!record || record.usedAt !== null || record.expiresAt <= now) {
+      if (record?.user?.isEmailVerified) {
+        return {
+          message: 'Email address has already been verified. Your account is fully activated.',
+        };
+      }
       throw new BadRequestException(
         'Invalid or expired verification link. Please request a new verification email.',
       );
