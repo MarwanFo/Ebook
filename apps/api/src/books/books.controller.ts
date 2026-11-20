@@ -95,7 +95,7 @@ export class BooksController {
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Headers('range') rangeHeader: string | undefined,
-    @Res() res: Response,
+    @Res() res: any,
   ): Promise<void> {
     const result = await this.booksService.streamBookFile(userId, id, rangeHeader);
 
@@ -117,7 +117,7 @@ export class BooksController {
   async streamCover(
     @CurrentUser('id') userId: string,
     @Param('id', ParseUUIDPipe) id: string,
-    @Res() res: Response,
+    @Res() res: any,
   ): Promise<void> {
     const { stream, mimeType } = await this.booksService.streamCover(userId, id);
 

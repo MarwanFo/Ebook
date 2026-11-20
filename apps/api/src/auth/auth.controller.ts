@@ -49,8 +49,8 @@ export class AuthController {
   async register(
     @Body() dto: RegisterDto,
     @Ip() ip: string,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: any,
   ): Promise<AuthSessionDto> {
     const userAgent = req.headers['user-agent'];
     const { session, rawRefreshToken } = await this.authService.register(dto, ip, userAgent);
@@ -68,8 +68,8 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Ip() ip: string,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: any,
   ): Promise<AuthSessionDto> {
     const userAgent = req.headers['user-agent'];
     const { session, rawRefreshToken } = await this.authService.login(dto, ip, userAgent);
@@ -86,8 +86,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Rotate refresh token and issue new access token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: any,
     @Ip() ip: string,
   ): Promise<AuthTokensDto> {
     const cookieName = this.cookieService.getCookieName();
@@ -113,10 +113,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Log out current session and clear refresh cookie' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<MessageResponseDto> {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: any): Promise<MessageResponseDto> {
     const cookieName = this.cookieService.getCookieName();
     const rawRefreshToken = req.cookies?.[cookieName];
 
@@ -143,7 +140,7 @@ export class AuthController {
   async changePassword(
     @CurrentUser('id') userId: string,
     @Body() dto: ChangePasswordDto,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: any,
   ): Promise<MessageResponseDto> {
     const result = await this.authService.changePassword(userId, dto);
     this.cookieService.clearRefreshCookie(res);
@@ -168,7 +165,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Password successfully reset' })
   async resetPassword(
     @Body() dto: ResetPasswordDto,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: any,
   ): Promise<MessageResponseDto> {
     const result = await this.authService.resetPassword(dto);
     this.cookieService.clearRefreshCookie(res);

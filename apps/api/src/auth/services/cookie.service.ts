@@ -26,7 +26,7 @@ export class CookieService {
    * Sets the refresh token cookie with strict security flags.
    * Path: / (required for __Host- prefix in production)
    */
-  setRefreshCookie(res: Response, refreshToken: string): void {
+  setRefreshCookie(res: any, refreshToken: string): void {
     const options: CookieOptions = {
       httpOnly: true,
       secure: this.isProduction,
@@ -41,7 +41,7 @@ export class CookieService {
   /**
    * Clears the refresh token cookie using exactly the same path, secure, and sameSite attributes.
    */
-  clearRefreshCookie(res: Response): void {
+  clearRefreshCookie(res: any): void {
     const options: CookieOptions = {
       httpOnly: true,
       secure: this.isProduction,
