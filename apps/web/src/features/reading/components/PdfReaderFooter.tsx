@@ -46,14 +46,14 @@ export const PdfReaderFooter: React.FC<PdfReaderFooterProps> = ({
 
   return (
     <footer
-      className={`h-12 px-2.5 sm:px-8 border-t flex items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 z-30 select-none ${footerThemeClasses}`}
+      className={`h-12 px-4 sm:px-8 border-t flex items-center justify-between gap-4 transition-colors duration-200 z-30 select-none ${footerThemeClasses}`}
     >
       {/* Previous Button */}
       <button
         type="button"
         onClick={onPrev}
         disabled={!canPrev || currentPage <= 1}
-        className={`px-2 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors ${buttonHoverClasses}`}
+        className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors ${buttonHoverClasses}`}
         title="Previous Page (Left Arrow / PageUp)"
         aria-label="Previous Page"
       >
@@ -62,7 +62,7 @@ export const PdfReaderFooter: React.FC<PdfReaderFooterProps> = ({
       </button>
 
       {/* Scrub Bar & Percentage Indicator */}
-      <div className="flex-1 max-w-xl flex items-center gap-2 sm:gap-3">
+      <div className="flex-1 max-w-xl flex items-center gap-3">
         <div
           className={`relative flex-1 h-2 rounded-full overflow-hidden cursor-pointer ${progressBgClass}`}
           onClick={(e) => {
@@ -92,7 +92,7 @@ export const PdfReaderFooter: React.FC<PdfReaderFooterProps> = ({
         type="button"
         onClick={onNext}
         disabled={!canNext || currentPage >= totalPages}
-        className={`px-2 sm:px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors ${buttonHoverClasses}`}
+        className={`px-3 py-1.5 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors ${buttonHoverClasses}`}
         title="Next Page (Right Arrow / PageDown / Space)"
         aria-label="Next Page"
       >

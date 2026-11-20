@@ -82,7 +82,7 @@ const InsideCoverPage = React.forwardRef<HTMLDivElement, InsideCoverProps>((prop
 
       {/* 3. Engraved Antique Parchment "Ex Libris" Bookplate */}
       <div
-        className="relative z-10 w-full max-w-[340px] sm:max-w-[400px] p-4 sm:p-8 rounded-xs shadow-2xl flex flex-col items-center text-center transition-transform duration-300 group-hover:scale-[1.01]"
+        className="relative z-10 w-full max-w-[340px] sm:max-w-[400px] p-6 sm:p-8 rounded-xs shadow-2xl flex flex-col items-center text-center transition-transform duration-300 group-hover:scale-[1.01]"
         style={{
           background: 'radial-gradient(ellipse at 50% 50%, #fefcf6 0%, #f6edd9 80%, #ebd7b5 100%)',
           border: '1px solid rgba(139, 94, 60, 0.45)',
@@ -189,7 +189,7 @@ const InsideBackCoverPage = React.forwardRef<HTMLDivElement, InsideBackCoverProp
 
       {/* Colophon Card */}
       <div
-        className="relative z-10 w-full max-w-[320px] p-4 sm:p-6 rounded-xs shadow-xl flex flex-col items-center text-center text-neutral-800"
+        className="relative z-10 w-full max-w-[320px] p-6 rounded-xs shadow-xl flex flex-col items-center text-center text-neutral-800"
         style={{
           background: 'radial-gradient(ellipse at 50% 50%, #fefcf6 0%, #f6edd9 80%, #ebd7b5 100%)',
           border: '1px solid rgba(139, 94, 60, 0.45)',
@@ -563,9 +563,6 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
 
   // Dynamic responsive book dimensions to fill 92-96% of the screen
   const [bookDimensions, setBookDimensions] = useState({ width: 620, height: 860 });
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false,
-  );
 
   useEffect(() => {
     if (!stageRef.current) return;
@@ -573,45 +570,31 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     const computeSize = () => {
       if (!stageRef.current) return;
       const rect = stageRef.current.getBoundingClientRect();
-      const isNarrow = rect.width < 768 || rect.width < rect.height;
-      setIsMobile(isNarrow);
 
-      if (isNarrow) {
-        // Mobile / Narrow Portrait: Single page display that fits cleanly within viewport
-        const availW = Math.max(260, rect.width - 24);
-        const availH = Math.max(360, rect.height - 52);
+      // Maximize available reading stage: leave proper breathing room for ambiance pill at top,
+      // gesture prompt at bottom, and side navigation arrows
+      const availW = Math.max(340, rect.width - 80);
+      const availH = Math.max(260, rect.height - 76);
 
-        let pageW = Math.min(availW, Math.round(availH * aspectRatio));
-        let pageH = Math.round(pageW / aspectRatio);
+      let pageH = availH;
+      let pageW = Math.round(pageH * aspectRatio);
 
-        if (pageH > availH) {
-          pageH = availH;
-          pageW = Math.round(pageH * aspectRatio);
-        }
-
-        setBookDimensions({
-          width: Math.min(600, Math.max(260, pageW)),
-          height: Math.min(920, Math.max(360, pageH)),
-        });
-      } else {
-        // Desktop / Tablet Landscape: Two-page spread
-        const availW = Math.max(680, rect.width - 64);
-        const availH = Math.max(480, rect.height - 30);
-
-        let pageH = availH;
-        let pageW = Math.round(pageH * aspectRatio);
-
-        // Two-page spread width
-        if (pageW * 2 > availW) {
-          pageW = Math.round(availW / 2);
-          pageH = Math.round(pageW / aspectRatio);
-        }
-
-        setBookDimensions({
-          width: Math.min(940, Math.max(340, pageW)),
-          height: Math.min(1320, Math.max(480, pageH)),
-        });
+      // Two-page spread width
+      if (pageW * 2 > availW) {
+        pageW = Math.round(availW / 2);
+        pageH = Math.round(pageW / aspectRatio);
       }
+
+      // If pageH exceeds availH after width clamping, clamp by height
+      if (pageH > availH) {
+        pageH = availH;
+        pageW = Math.round(pageH * aspectRatio);
+      }
+
+      setBookDimensions({
+        width: Math.min(940, Math.max(170, pageW)),
+        height: Math.min(1320, Math.max(240, pageH)),
+      });
     };
 
     computeSize();
@@ -758,23 +741,17 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
       if (pageFlip && typeof pageFlip.getCurrentPageIndex === 'function') {
         const currentSpreadPage = pageFlip.getCurrentPageIndex();
         if (currentSpreadPage !== undefined) {
-          if (isMobile) {
-            if (currentSpreadPage !== targetIndex) {
-              pageFlip.turnToPage(targetIndex);
-            }
-          } else {
-            const currentSpread = Math.floor(currentSpreadPage / 2);
-            const targetSpread = targetIndex <= 1 ? 0 : Math.floor(targetIndex / 2);
-            if (currentSpread !== targetSpread) {
-              pageFlip.turnToPage(targetIndex);
-            }
+          const currentSpread = Math.floor(currentSpreadPage / 2);
+          const targetSpread = targetIndex <= 1 ? 0 : Math.floor(targetIndex / 2);
+          if (currentSpread !== targetSpread) {
+            pageFlip.turnToPage(targetIndex);
           }
         }
       }
     } catch {
       // safe fallback
     }
-  }, [currentPage, isMobile]);
+  }, [currentPage]);
 
   // Luxury reading desk ambiance backgrounds
   const deskThemes = {
@@ -908,11 +885,11 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
       />
 
       {/* Top Floating Mini-Bar (Ambiance, Ribbon, Sound, Fullscreen) */}
-      <div className="absolute top-2 right-2 sm:top-3 sm:right-4 z-40 flex items-center gap-1 sm:gap-1.5 bg-black/65 backdrop-blur-md px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-white/10 text-amber-100 shadow-2xl">
+      <div className="absolute top-2.5 right-4 z-40 flex items-center gap-1.5 bg-black/65 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/10 text-amber-100 shadow-2xl">
         <button
           type="button"
           onClick={cycleDeskMode}
-          className="p-1 sm:p-1.5 rounded-full text-neutral-300 hover:text-amber-200 transition-colors flex items-center gap-1.5"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-amber-200 transition-colors flex items-center gap-1.5"
           title={`Desk: ${activeDesk.name} (Click to change)`}
           aria-label="Change Ambiance"
         >
@@ -925,7 +902,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={() => setShowRibbon(!showRibbon)}
-          className={`p-1 sm:p-1.5 rounded-full transition-colors ${
+          className={`p-1.5 rounded-full transition-colors ${
             showRibbon ? 'text-rose-400' : 'text-neutral-400 hover:text-white'
           }`}
           title={showRibbon ? 'Hide Bookmark Ribbon' : 'Show Bookmark Ribbon'}
@@ -937,7 +914,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="p-1 sm:p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
           title={soundEnabled ? 'Mute page flip sound' : 'Enable page flip sound'}
           aria-label={soundEnabled ? 'Mute sound' : 'Enable sound'}
         >
@@ -946,7 +923,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="p-1 sm:p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
         >
@@ -981,10 +958,10 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <div
           className="absolute pointer-events-none z-0 rounded-lg border border-amber-950/70 transition-all duration-300"
           style={{
-            top: isMobile ? '-6px' : '-12px',
-            bottom: isMobile ? '-6px' : '-12px',
-            left: isMobile ? '-4px' : `-${leftStackWidth + 8}px`,
-            right: isMobile ? '-4px' : `-${rightStackWidth + 8}px`,
+            top: '-12px',
+            bottom: '-12px',
+            left: `-${leftStackWidth + 8}px`,
+            right: `-${rightStackWidth + 8}px`,
             background:
               'linear-gradient(135deg, #2b180d 0%, #3d2415 35%, #221208 70%, #150a04 100%)',
             boxShadow:
@@ -1002,32 +979,28 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         </div>
 
         {/* 2. Left Page-Block Depth (Layered paper edge leaves on left) */}
-        {!isMobile && (
-          <div
-            className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-l-xs transition-all duration-300"
-            style={{
-              left: `-${leftStackWidth}px`,
-              width: `${leftStackWidth}px`,
-              background:
-                'repeating-linear-gradient(to right, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-              boxShadow: 'inset 2px 0 3px rgba(0,0,0,0.35), -2px 0 4px rgba(0,0,0,0.25)',
-            }}
-          />
-        )}
+        <div
+          className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-l-xs transition-all duration-300"
+          style={{
+            left: `-${leftStackWidth}px`,
+            width: `${leftStackWidth}px`,
+            background:
+              'repeating-linear-gradient(to right, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
+            boxShadow: 'inset 2px 0 3px rgba(0,0,0,0.35), -2px 0 4px rgba(0,0,0,0.25)',
+          }}
+        />
 
         {/* 3. Right Page-Block Depth (Layered paper edge leaves on right) */}
-        {!isMobile && (
-          <div
-            className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-r-xs transition-all duration-300"
-            style={{
-              right: `-${rightStackWidth}px`,
-              width: `${rightStackWidth}px`,
-              background:
-                'repeating-linear-gradient(to left, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-              boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.35), 2px 0 4px rgba(0,0,0,0.25)',
-            }}
-          />
-        )}
+        <div
+          className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-r-xs transition-all duration-300"
+          style={{
+            right: `-${rightStackWidth}px`,
+            width: `${rightStackWidth}px`,
+            background:
+              'repeating-linear-gradient(to left, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
+            boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.35), 2px 0 4px rgba(0,0,0,0.25)',
+          }}
+        />
 
         {/* 4. Bottom Page-Block Ledge (Bottom paper trims) */}
         <div
@@ -1040,49 +1013,43 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         />
 
         {/* 5. Top Woven Silk Endband / Headband (Red & Gold striped binding cloth) */}
-        {!isMobile && (
-          <div
-            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-t-xs pointer-events-none z-30"
-            style={{
-              background:
-                'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-              boxShadow: '0 -1px 3px rgba(0,0,0,0.5)',
-            }}
-          />
-        )}
+        <div
+          className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-t-xs pointer-events-none z-30"
+          style={{
+            background:
+              'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
+            boxShadow: '0 -1px 3px rgba(0,0,0,0.5)',
+          }}
+        />
 
         {/* 6. Bottom Woven Silk Endband / Tailband (Red & Gold striped binding cloth) */}
-        {!isMobile && (
-          <div
-            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-b-xs pointer-events-none z-30"
-            style={{
-              background:
-                'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
-            }}
-          />
-        )}
+        <div
+          className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-b-xs pointer-events-none z-30"
+          style={{
+            background:
+              'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          }}
+        />
 
         {/* 7. Center Book Spine Seam & Stitched Binding */}
-        {!isMobile && (
-          <div
-            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-5 pointer-events-none z-30"
-            style={{
-              background:
-                'linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 100%)',
-            }}
-          >
-            {/* Subtle Stitched Bookbinding Thread Knots */}
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-            <div className="absolute top-3/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-          </div>
-        )}
+        <div
+          className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-5 pointer-events-none z-30"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 100%)',
+          }}
+        >
+          {/* Subtle Stitched Bookbinding Thread Knots */}
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+          <div className="absolute top-3/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+        </div>
 
         {/* 8. Satin Bookmark Ribbon draping across the open spread */}
-        {!isMobile && showRibbon && (
+        {showRibbon && (
           <div
             className="absolute top-0 left-[58%] w-4 pointer-events-none z-30 transition-all duration-300"
             style={{
@@ -1107,18 +1074,18 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         {/* 9. The react-pageflip Canvas Container */}
         <div className="relative z-10">
           <HTMLFlipBook
-            key={`${isMobile ? 'mobile' : 'desktop'}-${bookDimensions.width}-${bookDimensions.height}`}
+            key={`${bookDimensions.width}-${bookDimensions.height}`}
             ref={flipBookRef}
             width={bookDimensions.width}
             height={bookDimensions.height}
             size="fixed"
-            minWidth={isMobile ? 240 : 320}
+            minWidth={170}
             maxWidth={1400}
-            minHeight={isMobile ? 340 : 450}
+            minHeight={240}
             maxHeight={1600}
             maxShadowOpacity={0.65}
             showCover={false}
-            usePortrait={true}
+            usePortrait={false}
             mobileScrollSupport={false}
             className="flip-book-container overflow-hidden rounded-xs"
             style={{ margin: 'auto' }}
@@ -1151,7 +1118,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
       </div>
 
       {/* Gesture Hint at Bottom */}
-      <p className="mt-1 sm:mt-1.5 text-[9px] sm:text-[10px] font-serif tracking-widest text-amber-200/50 uppercase text-center drop-shadow-xs z-10 pointer-events-none px-2 truncate max-w-full">
+      <p className="mt-2 text-[10px] font-serif tracking-widest text-amber-200/50 uppercase text-center drop-shadow-xs z-10 pointer-events-none truncate max-w-full px-2">
         ❖ Turn pages with Arrow Keys (← / →) or by clicking/dragging corners ❖
       </p>
     </div>
