@@ -29,11 +29,9 @@ var StorageDriver;
 class EnvironmentVariables {
     NODE_ENV = Environment.Development;
     PORT = 3000;
-    DATABASE_URL = process.env.DATABASE_URL ||
-        'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require';
+    DATABASE_URL;
     WEB_ORIGIN = 'http://localhost:5173';
-    JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ||
-        'bookflow_dev_access_secret_key_minimum_32_characters_long';
+    JWT_ACCESS_SECRET;
     JWT_ACCESS_EXPIRES_IN = '15m';
     JWT_ISSUER = 'bookflow-api';
     JWT_AUDIENCE = 'bookflow-client';
@@ -74,7 +72,6 @@ __decorate([
 ], EnvironmentVariables.prototype, "PORT", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "DATABASE_URL", void 0);
 __decorate([
@@ -87,7 +84,6 @@ __decorate([
     (0, class_validator_1.MinLength)(32, {
         message: 'JWT_ACCESS_SECRET must be at least 32 characters long for security',
     }),
-    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], EnvironmentVariables.prototype, "JWT_ACCESS_SECRET", void 0);
 __decorate([

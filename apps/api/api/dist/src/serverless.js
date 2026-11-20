@@ -12,15 +12,6 @@ const app_module_1 = require("./app.module");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 const logging_interceptor_1 = require("./common/interceptors/logging.interceptor");
 const all_exceptions_filter_1 = require("./common/filters/all-exceptions.filter");
-// Ensure required environment variables for Prisma and JWT
-if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL =
-        'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require';
-}
-if (!process.env.JWT_ACCESS_SECRET) {
-    process.env.JWT_ACCESS_SECRET =
-        'bookflow_dev_access_secret_key_minimum_32_characters_long';
-}
 let appInstance;
 async function getApp() {
     if (appInstance) {
