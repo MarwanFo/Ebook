@@ -132,6 +132,29 @@ export default async function handler(req: any, res: any) {
     return res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString() }));
   }
 
+  // Diagnostic endpoint to inspect getApp bootstrap directly
+  if (req.url === '/api/v1/debug' || req.url === '/debug') {
+    try {
+      const t0 = Date.now();
+      const app = await getApp();
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(
+        JSON.stringify({ status: 'ok', durationMs: Date.now() - t0, appReady: !!app }),
+      );
+    } catch (err: any) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(
+        JSON.stringify({
+          status: 'error',
+          error: err?.message || String(err),
+          stack: err?.stack,
+        }),
+      );
+    }
+  }
+
   try {
     const startTime = Date.now();
     console.log(`[Serverless] Incoming ${req.method} ${req.url}`);
