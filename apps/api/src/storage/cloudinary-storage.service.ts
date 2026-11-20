@@ -90,12 +90,29 @@ export class CloudinaryStorageService implements StorageService {
     });
   }
 
-  async getFileStream(storageKey: string, options?: StorageStreamOptions): Promise<Readable> {
+  private getDownloadUrl(storageKey: string): string {
     const cleanKey = this.sanitizeKey(storageKey);
-    const fileUrl = cloudinary.url(cleanKey, {
+    try {
+      if (typeof cloudinary.utils?.private_download_url === 'function') {
+        const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+        return cloudinary.utils.private_download_url(cleanKey, '', {
+          resource_type: 'raw',
+          type: 'upload',
+          expires_at: expiresAt,
+        });
+      }
+    } catch {
+      // Fallback to standard URL
+    }
+
+    return cloudinary.url(cleanKey, {
       resource_type: 'raw',
       secure: true,
     });
+  }
+
+  async getFileStream(storageKey: string, options?: StorageStreamOptions): Promise<Readable> {
+    const fileUrl = this.getDownloadUrl(storageKey);
 
     const headers: Record<string, string> = {};
     if (typeof options?.start === 'number' && typeof options?.end === 'number') {
@@ -134,11 +151,7 @@ export class CloudinaryStorageService implements StorageService {
   }
 
   async getFileBuffer(storageKey: string): Promise<Buffer> {
-    const cleanKey = this.sanitizeKey(storageKey);
-    const fileUrl = cloudinary.url(cleanKey, {
-      resource_type: 'raw',
-      secure: true,
-    });
+    const fileUrl = this.getDownloadUrl(storageKey);
 
     try {
       const response = await fetch(fileUrl);

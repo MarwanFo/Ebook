@@ -98,7 +98,9 @@ describe('CloudinaryStorageService', () => {
 
   it('should fetch and stream file using fetch with range header', async () => {
     const mockFileContent = 'PDF range streamed content';
-    jest.spyOn(cloudinary, 'url').mockReturnValue('https://res.cloudinary.com/test-cloud/raw/upload/books/file.pdf');
+    const mockUrl = 'https://res.cloudinary.com/test-cloud/raw/upload/books/file.pdf';
+    jest.spyOn(cloudinary.utils, 'private_download_url').mockReturnValue(mockUrl);
+    jest.spyOn(cloudinary, 'url').mockReturnValue(mockUrl);
 
     const globalFetch = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
@@ -114,7 +116,7 @@ describe('CloudinaryStorageService', () => {
     const stream = await service.getFileStream('books/file.pdf', { start: 0, end: 10 });
     expect(stream).toBeDefined();
     expect(globalFetch).toHaveBeenCalledWith(
-      'https://res.cloudinary.com/test-cloud/raw/upload/books/file.pdf',
+      mockUrl,
       expect.objectContaining({
         headers: { Range: 'bytes=0-10' },
       }),
