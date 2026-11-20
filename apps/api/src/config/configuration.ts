@@ -2,13 +2,17 @@ export default () => ({
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
   database: {
-    url: process.env.DATABASE_URL,
+    url:
+      process.env.DATABASE_URL ||
+      'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require',
   },
   cors: {
     origin: process.env.WEB_ORIGIN || 'http://localhost:5173',
   },
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET,
+    accessSecret:
+      process.env.JWT_ACCESS_SECRET ||
+      'bookflow_dev_access_secret_key_minimum_32_characters_long',
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30d',
     issuer: process.env.JWT_ISSUER || 'bookflow-api',
     audience: process.env.JWT_AUDIENCE || 'bookflow-client',

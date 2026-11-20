@@ -61,18 +61,20 @@ export async function getApp() {
 }
 
 export default async function handler(req: any, res: any) {
-  const origin = req.headers?.origin || '*';
+  const origin = req.headers?.origin || 'https://ebook-olive-one.vercel.app';
+
+  // Always set full CORS headers on every response
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type,Authorization,x-request-id,Accept,Origin,X-Requested-With',
+  );
 
   // Handle CORS preflight immediately
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type,Authorization,x-request-id,Accept,Origin',
-    );
     res.setHeader('Access-Control-Max-Age', '86400');
     return res.end();
   }
@@ -85,8 +87,6 @@ export default async function handler(req: any, res: any) {
     console.error('Serverless bootstrap error:', err);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
     return res.end(
       JSON.stringify({
         error: 'SERVERLESS_BOOTSTRAP_ERROR',

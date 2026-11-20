@@ -24,7 +24,10 @@ export class EnvironmentVariables {
   PORT: number = 3000;
 
   @IsString()
-  DATABASE_URL: string;
+  @IsOptional()
+  DATABASE_URL: string =
+    process.env.DATABASE_URL ||
+    'postgresql://neondb_owner:npg_OxgQSG39rJvn@ep-quiet-pine-zaprlskx-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require';
 
   @IsString()
   @IsOptional()
@@ -34,7 +37,10 @@ export class EnvironmentVariables {
   @MinLength(32, {
     message: 'JWT_ACCESS_SECRET must be at least 32 characters long for security',
   })
-  JWT_ACCESS_SECRET: string;
+  @IsOptional()
+  JWT_ACCESS_SECRET: string =
+    process.env.JWT_ACCESS_SECRET ||
+    'bookflow_dev_access_secret_key_minimum_32_characters_long';
 
   @IsString()
   @IsOptional()
