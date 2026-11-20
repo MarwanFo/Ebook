@@ -129,6 +129,24 @@ export default async function handler(req: any, res: any) {
     return res.end();
   }
 
+  // Root health / welcome message
+  if (req.url === '/' || req.url === '') {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(
+      JSON.stringify({
+        name: 'BookFlow API',
+        status: 'online',
+        version: '1.0.0',
+        endpoints: {
+          health: '/api/v1/health',
+          ready: '/api/v1/ready',
+          frontend: 'https://ebook-olive-one.vercel.app',
+        },
+      }),
+    );
+  }
+
   // Lightweight probe to verify serverless container execution
   if (req.url === '/api/v1/ping' || req.url === '/ping') {
     res.statusCode = 200;
