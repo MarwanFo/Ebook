@@ -55,14 +55,20 @@ export class SmtpMailService implements MailService {
       await this.transporter.sendMail({
         from: this.fromAddress,
         to: input.email,
-        subject: 'Reset your BookFlow password',
+        replyTo: this.fromAddress,
+        headers: {
+          'X-Auto-Response-Suppress': 'All',
+        },
+        subject: input.otp
+          ? `${input.otp} is your BookFlow password reset code`
+          : 'Reset your BookFlow password',
         text: `You recently requested to reset your password for your BookFlow account.\n\n${
           input.otp ? `Your 6-Digit Verification Code: ${input.otp}\n\n` : ''
         }Please visit the link below to set a new password:\n${input.resetUrl}\n\nThis code and link will expire at ${input.expiresAt.toISOString()}.\nIf you did not request a password reset, please ignore this email.`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
             <div style="margin-bottom: 24px;">
-              <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 8px 0;">Reset Your BookFlow Password 🔑</h2>
+              <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 8px 0;">Reset Your BookFlow Password</h2>
               <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
                 You recently requested to reset your password for your BookFlow account.
               </p>
@@ -135,6 +141,10 @@ export class SmtpMailService implements MailService {
       await this.transporter.sendMail({
         from: this.fromAddress,
         to: input.email,
+        replyTo: this.fromAddress,
+        headers: {
+          'X-Auto-Response-Suppress': 'All',
+        },
         subject: 'Security Alert: Your BookFlow password was changed',
         text: `Your BookFlow account password was successfully updated at ${input.timestamp.toISOString()}.\n\nIf you did not make this change, please contact support immediately.`,
         html: `
@@ -169,14 +179,20 @@ export class SmtpMailService implements MailService {
       await this.transporter.sendMail({
         from: this.fromAddress,
         to: input.email,
-        subject: 'Verify your BookFlow email address',
+        replyTo: this.fromAddress,
+        headers: {
+          'X-Auto-Response-Suppress': 'All',
+        },
+        subject: input.otp
+          ? `${input.otp} is your BookFlow verification code`
+          : 'Verify your BookFlow email address',
         text: `Welcome to BookFlow!\n\n${
           input.otp ? `Your 6-Digit Verification Code: ${input.otp}\n\n` : ''
         }Please verify your email address by visiting the link below:\n${input.verificationUrl}\n\nThis code and verification link expire at ${input.expiresAt.toISOString()}.\nIf you did not sign up for BookFlow, please disregard this email.`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
             <div style="margin-bottom: 24px;">
-              <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 8px 0;">Welcome to BookFlow 📚</h2>
+              <h2 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 8px 0;">Welcome to BookFlow</h2>
               <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
                 Thank you for joining BookFlow. Please verify your email address to activate your reading sanctuary and secure your account.
               </p>
@@ -247,12 +263,16 @@ export class SmtpMailService implements MailService {
       await this.transporter.sendMail({
         from: this.fromAddress,
         to: input.email,
+        replyTo: this.fromAddress,
+        headers: {
+          'X-Auto-Response-Suppress': 'All',
+        },
         subject: 'Security Notice: Attempted Registration on BookFlow',
         text: `Someone recently attempted to create a BookFlow account using your email address.\n\nIf this was you, you already have an account! You can sign in here: ${input.loginUrl}\nOr reset your password here: ${input.resetUrl}\n\nIf this was NOT you, you can safely ignore this email. Your existing account remains protected with strong cryptography.`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
             <div style="margin-bottom: 24px;">
-              <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin: 0 0 8px 0;">Account Registration Notice 🛡️</h2>
+              <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin: 0 0 8px 0;">Account Registration Notice</h2>
               <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
                 Someone recently attempted to register a new BookFlow account using your email address.
               </p>
