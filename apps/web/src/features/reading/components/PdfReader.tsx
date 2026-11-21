@@ -451,7 +451,7 @@ export const PdfReader: React.FC<PdfReaderProps> = ({ bookId, bookTitle, author 
       <main
         ref={containerRef}
         className={`relative flex-1 w-full flex items-center justify-center ${
-          viewMode === 'flipbook' ? 'p-1 sm:p-2 overflow-hidden' : 'p-4 sm:p-6 overflow-auto'
+          viewMode === 'flipbook' ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 overflow-auto'
         }`}
       >
         {/* Loading Spinner */}

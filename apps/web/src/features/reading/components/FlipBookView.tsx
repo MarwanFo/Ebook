@@ -82,7 +82,7 @@ const InsideCoverPage = React.forwardRef<HTMLDivElement, InsideCoverProps>((prop
 
       {/* 3. Engraved Antique Parchment "Ex Libris" Bookplate */}
       <div
-        className="relative z-10 w-full max-w-[340px] sm:max-w-[400px] p-6 sm:p-8 rounded-xs shadow-2xl flex flex-col items-center text-center transition-transform duration-300 group-hover:scale-[1.01]"
+        className="relative z-10 w-full max-w-[340px] sm:max-w-[440px] lg:max-w-[480px] p-6 sm:p-8 rounded-xs shadow-2xl flex flex-col items-center text-center transition-transform duration-300 group-hover:scale-[1.01]"
         style={{
           background: 'radial-gradient(ellipse at 50% 50%, #fefcf6 0%, #f6edd9 80%, #ebd7b5 100%)',
           border: '1px solid rgba(139, 94, 60, 0.45)',
@@ -588,9 +588,9 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
       setIsMobile(isMob);
 
       if (isMob) {
-        // Mobile Single Page: fill the mobile stage cleanly
-        const availW = Math.max(260, rect.width - 24);
-        const availH = Math.max(340, rect.height - 48);
+        // Mobile Single Page: fill the mobile stage cleanly (minimal gutters)
+        const availW = Math.max(260, rect.width - 16);
+        const availH = Math.max(340, rect.height - 24);
 
         let pageW = availW;
         let pageH = Math.round(pageW / aspectRatio);
@@ -601,22 +601,31 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         }
 
         setBookDimensions({
-          width: Math.min(600, Math.max(240, Math.round(pageW))),
-          height: Math.min(950, Math.max(320, Math.round(pageH))),
+          width: Math.min(800, Math.max(240, Math.round(pageW))),
+          height: Math.min(1200, Math.max(320, Math.round(pageH))),
         });
       } else {
-        // Desktop / Tablet Two-Page Spread: luxurious, spacious, immersive spread (fills 90-95% of screen)
-        // Leaving clearance for side arrows and top/bottom mini-bars
-        const availW = Math.max(680, rect.width - 56);
-        const availH = Math.max(450, rect.height - 44);
+        // Desktop / Tablet Two-Page Spread: maximized to take virtually the entire screen (95-98%)
+        // Ultra-slim gutters for drop-shadow and aesthetic casing
+        const availW = Math.max(600, rect.width - 24);
+        const availH = Math.max(360, rect.height - 18);
 
         let pageH = availH;
         let pageW = Math.round(pageH * aspectRatio);
 
-        // Two-page spread total width is pageW * 2
+        // If the natural two-page spread exceeds availW, scale height down so spread fits cleanly
         if (pageW * 2 > availW) {
           pageW = Math.floor(availW / 2);
           pageH = Math.round(pageW / aspectRatio);
+        }
+
+        // On widescreen displays where width is abundant (availW > pageW * 2),
+        // allow pageW to expand into the available width (up to availW / 2, capped at pageH * 0.95)
+        // so the open book takes up almost the entire screen width instead of leaving massive empty desk gutters
+        if (pageW * 2 < availW) {
+          const maxComfortablePageW = Math.round(pageH * 0.95);
+          const maxAvailablePageW = Math.floor(availW / 2);
+          pageW = Math.min(maxAvailablePageW, Math.max(pageW, maxComfortablePageW));
         }
 
         if (pageH > availH) {
@@ -625,8 +634,8 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         }
 
         setBookDimensions({
-          width: Math.min(940, Math.max(320, pageW)),
-          height: Math.min(1320, Math.max(450, pageH)),
+          width: Math.min(1400, Math.max(260, Math.round(pageW))),
+          height: Math.min(1800, Math.max(340, Math.round(pageH))),
         });
       }
     };
@@ -747,6 +756,12 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
       setIsFullscreen(false);
     }
   };
+
+  useEffect(() => {
+    const handleFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handleFs);
+    return () => document.removeEventListener('fullscreenchange', handleFs);
+  }, []);
 
   // Active Keyboard Navigation (Left/Right Arrow keys, PageUp/PageDown)
   useEffect(() => {
@@ -922,7 +937,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   return (
     <div
       ref={stageRef}
-      className={`relative w-full h-full flex flex-col items-center justify-center p-1 sm:p-2 overflow-hidden select-none transition-colors duration-500 ${activeDesk.bg}`}
+      className={`relative w-full h-full flex items-center justify-center p-0 overflow-hidden select-none transition-colors duration-500 ${activeDesk.bg}`}
     >
       {/* Ambient Reading Lamp Vignette Lighting over the Desk */}
       <div
@@ -937,7 +952,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={cycleDeskMode}
-          className="p-1.5 rounded-full text-neutral-300 hover:text-amber-200 transition-colors flex items-center gap-1.5"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer"
           title={`Desk: ${activeDesk.name} (Click to change)`}
           aria-label="Change Ambiance"
         >
@@ -950,7 +965,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={() => setShowRibbon(!showRibbon)}
-          className={`p-1.5 rounded-full transition-colors ${
+          className={`p-1.5 rounded-full transition-colors cursor-pointer ${
             showRibbon ? 'text-rose-400' : 'text-neutral-400 hover:text-white'
           }`}
           title={showRibbon ? 'Hide Bookmark Ribbon' : 'Show Bookmark Ribbon'}
@@ -962,7 +977,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors cursor-pointer"
           title={soundEnabled ? 'Mute page flip sound' : 'Enable page flip sound'}
           aria-label={soundEnabled ? 'Mute sound' : 'Enable sound'}
         >
@@ -971,7 +986,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors"
+          className="p-1.5 rounded-full text-neutral-300 hover:text-white transition-colors cursor-pointer"
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
         >
@@ -983,6 +998,28 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         </button>
       </div>
 
+      {/* Stage-Anchored Left Navigation Button */}
+      <button
+        type="button"
+        onClick={flipPrev}
+        className="hidden md:flex absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-40 p-2.5 sm:p-3 rounded-full bg-black/65 hover:bg-black/90 text-amber-200 border border-amber-400/40 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
+        title="Previous Page (or click/drag left page)"
+        aria-label="Previous Page"
+      >
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+
+      {/* Stage-Anchored Right Navigation Button */}
+      <button
+        type="button"
+        onClick={flipNext}
+        className="hidden md:flex absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-40 p-2.5 sm:p-3 rounded-full bg-black/65 hover:bg-black/90 text-amber-200 border border-amber-400/40 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
+        title="Next Page (or click/drag right page)"
+        aria-label="Next Page"
+      >
+        <ChevronRight className="w-5 h-5" />
+      </button>
+
       {/* 3D Realistic Open Book Structure (Boards, paper stack depth, and desk shadow) */}
       <div
         className="relative flex items-center justify-center transition-all duration-300 z-10"
@@ -991,25 +1028,14 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
             'drop-shadow(0 32px 48px rgba(0, 0, 0, 0.6)) drop-shadow(0 14px 20px rgba(0, 0, 0, 0.4))',
         }}
       >
-        {/* Navigation Arrow Left (Antique brass tab) */}
-        <button
-          type="button"
-          onClick={flipPrev}
-          className="hidden md:flex absolute -left-10 lg:-left-12 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black/85 text-amber-200 border border-amber-400/30 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95"
-          title="Previous Page (or click/drag left page)"
-          aria-label="Previous Page"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
         {/* 1. Outer Hardcover Casing Boards */}
         <div
           className="absolute pointer-events-none z-0 rounded-lg border border-amber-950/70 transition-all duration-300"
           style={{
-            top: isMobile ? '-8px' : '-12px',
-            bottom: isMobile ? '-8px' : '-12px',
-            left: isMobile ? '-8px' : `-${leftStackWidth + 8}px`,
-            right: isMobile ? '-8px' : `-${rightStackWidth + 8}px`,
+            top: isMobile ? '-6px' : '-8px',
+            bottom: isMobile ? '-6px' : '-8px',
+            left: isMobile ? '-6px' : `-${leftStackWidth + 6}px`,
+            right: isMobile ? '-6px' : `-${rightStackWidth + 6}px`,
             background:
               'linear-gradient(135deg, #2b180d 0%, #3d2415 35%, #221208 70%, #150a04 100%)',
             boxShadow:
@@ -1137,10 +1163,10 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
             width={bookDimensions.width}
             height={bookDimensions.height}
             size="fixed"
-            minWidth={isMobile ? 240 : 320}
-            maxWidth={1400}
-            minHeight={isMobile ? 320 : 450}
-            maxHeight={1600}
+            minWidth={isMobile ? 240 : 260}
+            maxWidth={1600}
+            minHeight={isMobile ? 320 : 340}
+            maxHeight={1800}
             maxShadowOpacity={0.65}
             showCover={false}
             usePortrait={isMobile}
@@ -1170,21 +1196,10 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
             {bookElements}
           </HTMLFlipBook>
         </div>
-
-        {/* Navigation Arrow Right (Antique brass tab) */}
-        <button
-          type="button"
-          onClick={flipNext}
-          className="hidden md:flex absolute -right-10 lg:-right-12 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black/85 text-amber-200 border border-amber-400/30 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95"
-          title="Next Page (or click/drag right page)"
-          aria-label="Next Page"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
 
-      {/* Gesture Hint at Bottom */}
-      <p className="mt-2 text-[10px] font-serif tracking-widest text-amber-200/50 uppercase text-center drop-shadow-xs z-10 pointer-events-none truncate max-w-full px-2">
+      {/* Subtle Gesture Hint Overlay at Bottom */}
+      <p className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none text-[10px] font-serif tracking-widest text-amber-200/60 uppercase text-center drop-shadow-md bg-black/45 backdrop-blur-xs py-0.5 px-3 rounded-full border border-white/5 truncate max-w-[90vw]">
         ❖ Turn pages with Arrow Keys (← / →) or by clicking/dragging corners ❖
       </p>
     </div>
