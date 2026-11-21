@@ -222,6 +222,7 @@ interface FlipPdfPageProps {
   theme: 'light' | 'sepia' | 'dark';
   totalPages: number;
   isLeftPage: boolean;
+  isMobile?: boolean;
   targetWidth?: number;
   targetHeight?: number;
 }
@@ -233,6 +234,7 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
     theme,
     totalPages,
     isLeftPage,
+    isMobile = false,
     targetWidth = 600,
     targetHeight = 850,
   } = props;
@@ -371,8 +373,12 @@ const FlipPdfPage = React.forwardRef<HTMLDivElement, FlipPdfPageProps>((props, r
         />
       </div>
 
-      {/* Actual PDF Page Canvas (Scaled large to fill page edge-to-edge) */}
-      <div className="flex-1 w-full h-full flex items-center justify-center p-0 sm:p-0.5 overflow-hidden relative z-0">
+      {/* Actual PDF Page Canvas (Scaled large to fill page edge-to-edge, with inner gutter clearance) */}
+      <div
+        className={`flex-1 w-full h-full flex items-center justify-center overflow-hidden relative z-0 ${
+          isMobile ? 'p-1' : isLeftPage ? 'pl-2 pr-4 sm:pr-6 py-0.5' : 'pl-4 sm:pl-6 pr-2 py-0.5'
+        }`}
+      >
         {loading && !isRendered && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-60">
             <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
@@ -537,6 +543,14 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   const [deskMode, setDeskMode] = useState<'mahogany' | 'midnight' | 'oak' | 'minimal'>('mahogany');
   const cleanTitle = formatBookTitle(title);
 
+  // Responsive device orientation mode (< 768px = mobile single page, >= 768px = desktop two-page spread)
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
   // Dynamic PDF page aspect ratio detection (defaults to standard 0.707)
   const [aspectRatio, setAspectRatio] = useState(0.707);
 
@@ -550,8 +564,8 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         const vp = firstPage.getViewport({ scale: 1.0 });
         if (vp.width && vp.height) {
           const detected = vp.width / vp.height;
-          // Clamp between 0.55 (narrow pocket) and 0.82 (wide US Letter)
-          const safe = Math.min(0.82, Math.max(0.55, detected));
+          // Clamp between 0.60 (narrow pocket) and 0.85 (wide US Letter)
+          const safe = Math.min(0.85, Math.max(0.6, detected));
           setAspectRatio(safe);
         }
       })
@@ -561,8 +575,8 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     };
   }, [pdfDoc]);
 
-  // Dynamic responsive book dimensions to fill 92-96% of the screen
-  const [bookDimensions, setBookDimensions] = useState({ width: 620, height: 860 });
+  // Dynamic responsive book dimensions to fill available reading stage
+  const [bookDimensions, setBookDimensions] = useState({ width: 500, height: 710 });
 
   useEffect(() => {
     if (!stageRef.current) return;
@@ -570,31 +584,51 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     const computeSize = () => {
       if (!stageRef.current) return;
       const rect = stageRef.current.getBoundingClientRect();
+      const isMob = rect.width < 768;
+      setIsMobile(isMob);
 
-      // Maximize available reading stage: leave proper breathing room for ambiance pill at top,
-      // gesture prompt at bottom, and side navigation arrows
-      const availW = Math.max(340, rect.width - 80);
-      const availH = Math.max(260, rect.height - 76);
+      if (isMob) {
+        // Mobile Single Page: fill the mobile stage cleanly
+        const availW = Math.max(260, rect.width - 24);
+        const availH = Math.max(340, rect.height - 48);
 
-      let pageH = availH;
-      let pageW = Math.round(pageH * aspectRatio);
+        let pageW = availW;
+        let pageH = Math.round(pageW / aspectRatio);
 
-      // Two-page spread width
-      if (pageW * 2 > availW) {
-        pageW = Math.round(availW / 2);
-        pageH = Math.round(pageW / aspectRatio);
+        if (pageH > availH) {
+          pageH = availH;
+          pageW = Math.round(pageH * aspectRatio);
+        }
+
+        setBookDimensions({
+          width: Math.min(600, Math.max(240, Math.round(pageW))),
+          height: Math.min(950, Math.max(320, Math.round(pageH))),
+        });
+      } else {
+        // Desktop / Tablet Two-Page Spread: luxurious, spacious, immersive spread (fills 90-95% of screen)
+        // Leaving clearance for side arrows and top/bottom mini-bars
+        const availW = Math.max(680, rect.width - 56);
+        const availH = Math.max(450, rect.height - 44);
+
+        let pageH = availH;
+        let pageW = Math.round(pageH * aspectRatio);
+
+        // Two-page spread total width is pageW * 2
+        if (pageW * 2 > availW) {
+          pageW = Math.floor(availW / 2);
+          pageH = Math.round(pageW / aspectRatio);
+        }
+
+        if (pageH > availH) {
+          pageH = availH;
+          pageW = Math.round(pageH * aspectRatio);
+        }
+
+        setBookDimensions({
+          width: Math.min(940, Math.max(320, pageW)),
+          height: Math.min(1320, Math.max(450, pageH)),
+        });
       }
-
-      // If pageH exceeds availH after width clamping, clamp by height
-      if (pageH > availH) {
-        pageH = availH;
-        pageW = Math.round(pageH * aspectRatio);
-      }
-
-      setBookDimensions({
-        width: Math.min(940, Math.max(170, pageW)),
-        height: Math.min(1320, Math.max(240, pageH)),
-      });
     };
 
     computeSize();
@@ -668,14 +702,20 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
     (e: { data: number }) => {
       playPageTurnSound();
       if (onPageChange) {
-        // e.data is the 0-based index of the turned page.
-        // Element 0 is Inside Cover, Element 1 is PDF Page 1.
-        // When viewing spread 0 (indices 0 and 1), the active reading page is 1.
-        const activePdfPage = Math.max(1, Math.min(totalPages, e.data <= 1 ? 1 : e.data));
-        onPageChange(activePdfPage);
+        if (isMobile) {
+          // In mobile single-page mode: e.data is the 0-based page index
+          const page = Math.max(1, Math.min(totalPages, e.data));
+          onPageChange(page);
+        } else {
+          // In desktop 2-page spread mode: e.data is the 0-based index of the turned page.
+          // Spread 0 (indices 0 & 1): active reading page is 1.
+          // Spread 1 (indices 2 & 3): active reading page is 2.
+          const activePdfPage = Math.max(1, Math.min(totalPages, e.data <= 1 ? 1 : e.data));
+          onPageChange(activePdfPage);
+        }
       }
     },
-    [onPageChange, playPageTurnSound, totalPages],
+    [isMobile, onPageChange, playPageTurnSound, totalPages],
   );
 
   const flipPrev = useCallback(() => {
@@ -735,23 +775,30 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
   // Synchronize when currentPage changes from reader controls (TOC, jump input)
   useEffect(() => {
     if (!flipBookRef.current) return;
-    const targetIndex = Math.max(1, currentPage);
     try {
       const pageFlip = flipBookRef.current.pageFlip();
       if (pageFlip && typeof pageFlip.getCurrentPageIndex === 'function') {
         const currentSpreadPage = pageFlip.getCurrentPageIndex();
         if (currentSpreadPage !== undefined) {
-          const currentSpread = Math.floor(currentSpreadPage / 2);
-          const targetSpread = targetIndex <= 1 ? 0 : Math.floor(targetIndex / 2);
-          if (currentSpread !== targetSpread) {
-            pageFlip.turnToPage(targetIndex);
+          if (isMobile) {
+            if (currentSpreadPage !== currentPage) {
+              pageFlip.turnToPage(currentPage);
+            }
+          } else {
+            const currentSpread = Math.floor(currentSpreadPage / 2);
+            const targetSpread = currentPage <= 1 ? 0 : Math.floor(currentPage / 2);
+            if (currentSpread !== targetSpread) {
+              const targetIndex =
+                currentPage <= 1 ? 0 : currentPage % 2 === 0 ? currentPage : currentPage - 1;
+              pageFlip.turnToPage(targetIndex);
+            }
           }
         }
       }
     } catch {
       // safe fallback
     }
-  }, [currentPage]);
+  }, [currentPage, isMobile]);
 
   // Luxury reading desk ambiance backgrounds
   const deskThemes = {
@@ -820,6 +867,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           theme={theme}
           totalPages={totalPages}
           isLeftPage={isLeft}
+          isMobile={isMobile}
           targetWidth={bookDimensions.width}
           targetHeight={bookDimensions.height}
         />,
@@ -958,10 +1006,10 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         <div
           className="absolute pointer-events-none z-0 rounded-lg border border-amber-950/70 transition-all duration-300"
           style={{
-            top: '-12px',
-            bottom: '-12px',
-            left: `-${leftStackWidth + 8}px`,
-            right: `-${rightStackWidth + 8}px`,
+            top: isMobile ? '-8px' : '-12px',
+            bottom: isMobile ? '-8px' : '-12px',
+            left: isMobile ? '-8px' : `-${leftStackWidth + 8}px`,
+            right: isMobile ? '-8px' : `-${rightStackWidth + 8}px`,
             background:
               'linear-gradient(135deg, #2b180d 0%, #3d2415 35%, #221208 70%, #150a04 100%)',
             boxShadow:
@@ -978,29 +1026,33 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-amber-400/50 rounded-br-sm pointer-events-none bg-gradient-to-tl from-amber-300/25 to-transparent" />
         </div>
 
-        {/* 2. Left Page-Block Depth (Layered paper edge leaves on left) */}
-        <div
-          className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-l-xs transition-all duration-300"
-          style={{
-            left: `-${leftStackWidth}px`,
-            width: `${leftStackWidth}px`,
-            background:
-              'repeating-linear-gradient(to right, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-            boxShadow: 'inset 2px 0 3px rgba(0,0,0,0.35), -2px 0 4px rgba(0,0,0,0.25)',
-          }}
-        />
+        {/* 2. Left Page-Block Depth (Layered paper edge leaves on left, desktop spread only) */}
+        {!isMobile && (
+          <div
+            className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-l-xs transition-all duration-300"
+            style={{
+              left: `-${leftStackWidth}px`,
+              width: `${leftStackWidth}px`,
+              background:
+                'repeating-linear-gradient(to right, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
+              boxShadow: 'inset 2px 0 3px rgba(0,0,0,0.35), -2px 0 4px rgba(0,0,0,0.25)',
+            }}
+          />
+        )}
 
-        {/* 3. Right Page-Block Depth (Layered paper edge leaves on right) */}
-        <div
-          className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-r-xs transition-all duration-300"
-          style={{
-            right: `-${rightStackWidth}px`,
-            width: `${rightStackWidth}px`,
-            background:
-              'repeating-linear-gradient(to left, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-            boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.35), 2px 0 4px rgba(0,0,0,0.25)',
-          }}
-        />
+        {/* 3. Right Page-Block Depth (Layered paper edge leaves on right, desktop spread only) */}
+        {!isMobile && (
+          <div
+            className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-r-xs transition-all duration-300"
+            style={{
+              right: `-${rightStackWidth}px`,
+              width: `${rightStackWidth}px`,
+              background:
+                'repeating-linear-gradient(to left, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
+              boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.35), 2px 0 4px rgba(0,0,0,0.25)',
+            }}
+          />
+        )}
 
         {/* 4. Bottom Page-Block Ledge (Bottom paper trims) */}
         <div
@@ -1012,48 +1064,54 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           }}
         />
 
-        {/* 5. Top Woven Silk Endband / Headband (Red & Gold striped binding cloth) */}
-        <div
-          className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-t-xs pointer-events-none z-30"
-          style={{
-            background:
-              'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-            boxShadow: '0 -1px 3px rgba(0,0,0,0.5)',
-          }}
-        />
-
-        {/* 6. Bottom Woven Silk Endband / Tailband (Red & Gold striped binding cloth) */}
-        <div
-          className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-b-xs pointer-events-none z-30"
-          style={{
-            background:
-              'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
-          }}
-        />
-
-        {/* 7. Center Book Spine Seam & Stitched Binding */}
-        <div
-          className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-5 pointer-events-none z-30"
-          style={{
-            background:
-              'linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 100%)',
-          }}
-        >
-          {/* Subtle Stitched Bookbinding Thread Knots */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-          <div className="absolute top-3/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
-        </div>
-
-        {/* 8. Satin Bookmark Ribbon draping across the open spread */}
-        {showRibbon && (
+        {/* 5. Top Woven Silk Endband / Headband (Red & Gold striped binding cloth, desktop spread only) */}
+        {!isMobile && (
           <div
-            className="absolute top-0 left-[58%] w-4 pointer-events-none z-30 transition-all duration-300"
+            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-t-xs pointer-events-none z-30"
             style={{
-              height: '80%',
+              background:
+                'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
+              boxShadow: '0 -1px 3px rgba(0,0,0,0.5)',
+            }}
+          />
+        )}
+
+        {/* 6. Bottom Woven Silk Endband / Tailband (Red & Gold striped binding cloth, desktop spread only) */}
+        {!isMobile && (
+          <div
+            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-b-xs pointer-events-none z-30"
+            style={{
+              background:
+                'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
+            }}
+          />
+        )}
+
+        {/* 7. Center Book Spine Seam & Stitched Binding (desktop spread only) */}
+        {!isMobile && (
+          <div
+            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-5 pointer-events-none z-30"
+            style={{
+              background:
+                'linear-gradient(to right, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 100%)',
+            }}
+          >
+            {/* Subtle Stitched Bookbinding Thread Knots */}
+            <div className="absolute top-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+            <div className="absolute top-3/4 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/35 shadow-xs" />
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-1 h-1.5 rounded-full bg-amber-100/40 shadow-xs" />
+          </div>
+        )}
+
+        {/* 8. Satin Bookmark Ribbon draping across the open spread (desktop spread only) */}
+        {!isMobile && showRibbon && (
+          <div
+            className="absolute top-0 left-[53%] w-3.5 pointer-events-none z-30 transition-all duration-300"
+            style={{
+              height: '75%',
               filter: 'drop-shadow(2px 5px 8px rgba(0,0,0,0.55))',
             }}
           >
@@ -1074,23 +1132,31 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
         {/* 9. The react-pageflip Canvas Container */}
         <div className="relative z-10">
           <HTMLFlipBook
-            key={`${bookDimensions.width}-${bookDimensions.height}`}
+            key={`${isMobile ? 'mob' : 'desk'}-${bookDimensions.width}-${bookDimensions.height}`}
             ref={flipBookRef}
             width={bookDimensions.width}
             height={bookDimensions.height}
             size="fixed"
-            minWidth={170}
+            minWidth={isMobile ? 240 : 320}
             maxWidth={1400}
-            minHeight={240}
+            minHeight={isMobile ? 320 : 450}
             maxHeight={1600}
             maxShadowOpacity={0.65}
             showCover={false}
-            usePortrait={false}
+            usePortrait={isMobile}
             mobileScrollSupport={false}
             className="flip-book-container overflow-hidden rounded-xs"
             style={{ margin: 'auto' }}
             onFlip={handleFlip}
-            startPage={Math.max(1, currentPage)}
+            startPage={
+              isMobile
+                ? Math.max(1, currentPage)
+                : currentPage <= 1
+                  ? 0
+                  : currentPage % 2 === 0
+                    ? currentPage
+                    : currentPage - 1
+            }
             drawShadow={true}
             flippingTime={600}
             startZIndex={0}
