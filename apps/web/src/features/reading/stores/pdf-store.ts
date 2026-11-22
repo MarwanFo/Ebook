@@ -41,7 +41,12 @@ function loadStoredPdfSettings(): Partial<PdfSettingsState> {
   if (!storage) return {};
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    // Default to interactive 3D FlipBook view mode
+    if (!parsed.viewMode || parsed.viewMode === 'two-page') {
+      parsed.viewMode = 'flipbook';
+    }
+    return parsed;
   } catch {
     return {};
   }
@@ -70,7 +75,7 @@ export const usePdfStore = create<PdfSettingsState>((set, get) => {
   return {
     zoom: initial.zoom ?? 1.0,
     zoomMode: initial.zoomMode ?? 'fit-width',
-    viewMode: initial.viewMode ?? 'two-page',
+    viewMode: initial.viewMode ?? 'flipbook',
     theme: initial.theme ?? 'sepia',
     rotation: initial.rotation ?? 0,
 

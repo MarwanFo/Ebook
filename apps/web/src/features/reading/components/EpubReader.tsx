@@ -1,15 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ePubLibrary, { Book, Rendition, Location, NavItem } from 'epubjs';
 import { LocationType } from '@bookflow/shared-types';
 import { Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { booksApi } from '../../books/services/books-api';
 import { useReadingProgress } from '../hooks/useReadingProgress';
 import { useUpdateProgress } from '../hooks/useUpdateProgress';
-import { useReaderStore } from '../stores/reader-store';
-import { ReaderHeader } from './ReaderHeader';
-import { ReaderFooter } from './ReaderFooter';
-import { ReaderTocSidebar } from './ReaderTocSidebar';
-import { ReaderSettingsModal } from './ReaderSettingsModal';
+import { usePdfStore } from '../stores/pdf-store';
+import { PdfReaderHeader } from './PdfReaderHeader';
+import { PdfReaderFooter } from './PdfReaderFooter';
+import { PdfReaderTocSidebar, PdfOutlineItem } from './PdfReaderTocSidebar';
 import { BookmarksSidebar } from './BookmarksSidebar';
 import { useBookmarks } from '../hooks/useBookmarks';
 import { FlipBookView } from './FlipBookView';
@@ -33,51 +32,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   const renditionRef = useRef<Rendition | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Reader Preferences Store
-  const { theme, fontFamily, fontSize, lineHeight, layout, setLayout } = useReaderStore();
-
-  // Desk Ambiance State for Mode Book (Matching FlipBookView)
-  const [soundEnabled] = useState(true);
-
-  const playPageTurnSound = useCallback(() => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtxClass =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtxClass) return;
-      const audioCtx = new AudioCtxClass();
-      const pitchFactor = 0.92 + Math.random() * 0.16;
-      const duration = 0.17;
-      const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        const t = i / bufferSize;
-        const envelope = Math.sin(t * Math.PI) * (1 - 0.25 * Math.sin(t * 22));
-        data[i] = (Math.random() * 2 - 1) * envelope;
-      }
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = buffer;
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(1400 * pitchFactor, audioCtx.currentTime);
-      filter.frequency.exponentialRampToValueAtTime(
-        700 * pitchFactor,
-        audioCtx.currentTime + duration,
-      );
-      filter.Q.value = 1.35;
-      const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-      noise.start();
-    } catch {
-      // AudioContext policy safety
-    }
-  }, [soundEnabled]);
+  // Unified Reader Store (Shared with PDF reader for 100% design consistency)
+  const { zoom, zoomMode, viewMode, theme, rotation } = usePdfStore();
 
   // Backend Sync
   const { data: savedProgress, isLoading: isProgressLoading } = useReadingProgress(bookId);
@@ -91,24 +47,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   const [currentChapter, setCurrentChapter] = useState<string>('');
   const [currentCfi, setCurrentCfi] = useState<string>('');
   const [progressPercentage, setProgressPercentage] = useState<number>(0);
-  const [currentPage, setCurrentPage] = useState<number | undefined>(undefined);
-  const [totalPages, setTotalPages] = useState<number | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
 
   // 3D FlipBook Extracted Pages
   const [epubPages, setEpubPages] = useState<ExtractedEpubPage[]>([]);
-  const [isExtractingPages, setIsExtractingPages] = useState(true);
 
   // Overlay Panels
   const [isTocOpen, setIsTocOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBookmarksOpen, setIsBookmarksOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const handleJumpToLocation = useCallback((_locType: LocationType, locValue: string) => {
-    if (renditionRef.current) {
-      renditionRef.current.display(locValue);
-    }
-  }, []);
 
   // Fullscreen Handler
   const handleToggleFullscreen = useCallback(() => {
@@ -129,364 +77,133 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Compute Font Family CSS
-  const getFontFamilyCss = (font: string) => {
-    switch (font) {
-      case 'sans':
-        return 'Inter, system-ui, -apple-system, sans-serif !important';
-      case 'mono':
-        return '"JetBrains Mono", Consolas, monospace !important';
-      case 'serif':
-      default:
-        return 'Merriweather, Georgia, Cambria, serif !important';
+  // Compute Outline for Table of Contents Sidebar
+  const outline: PdfOutlineItem[] = useMemo(() => {
+    if (toc.length > 0 && epubPages.length > 0) {
+      return toc.map((item, idx) => {
+        const cleanItemHref =
+          (item.href || '').split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+        const foundIndex = epubPages.findIndex((p) => {
+          if (!p.href) return false;
+          const cleanPageHref = p.href.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+          return (
+            cleanPageHref === cleanItemHref ||
+            cleanPageHref.endsWith(cleanItemHref) ||
+            cleanItemHref.endsWith(cleanPageHref)
+          );
+        });
+        return {
+          title: item.label,
+          pageNumber: foundIndex >= 0 ? foundIndex + 1 : idx + 1,
+        };
+      });
     }
-  };
+    // Fallback outline from extracted chapter titles
+    if (epubPages.length > 0) {
+      return epubPages.reduce<PdfOutlineItem[]>((acc, page, idx) => {
+        if (page.chapterTitle && !acc.some((o) => o.title === page.chapterTitle)) {
+          acc.push({
+            title: page.chapterTitle,
+            pageNumber: idx + 1,
+          });
+        }
+        return acc;
+      }, []);
+    }
+    return [];
+  }, [epubPages, toc]);
 
-  // Apply Theme & Font Rules to Rendition
-  const applyStylesToRendition = useCallback(
-    (rendition: Rendition) => {
-      const themes = rendition.themes;
-      const isBook = layout === 'book';
+  // Jump to specific page number
+  const handleJumpToPage = useCallback(
+    (pageNum: number) => {
+      const maxPage = Math.max(1, totalPages || epubPages.length || 1);
+      const target = Math.max(1, Math.min(maxPage, pageNum));
+      setCurrentPage(target);
 
-      const lightBg = isBook ? '#faf8f5 !important' : '#ffffff !important';
-      const sepiaBg = isBook ? '#fbf7ee !important' : '#f5edd6 !important';
-      const darkBg = isBook ? '#1e1c1a !important' : '#121110 !important';
-
-      // Theme rules
-      themes.register('light', {
-        body: {
-          background: lightBg,
-          color: '#1a1a1a !important',
-          'font-family': getFontFamilyCss(fontFamily),
-          'font-size': `${fontSize}px !important`,
-          'line-height': `${lineHeight} !important`,
-          padding: '0 24px !important',
-        },
-        img: { 'max-width': '100% !important', height: 'auto !important' },
-        p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
-        a: { color: '#b45309 !important', 'text-decoration': 'underline' },
-      });
-
-      themes.register('sepia', {
-        body: {
-          background: sepiaBg,
-          color: '#4a3b2c !important',
-          'font-family': getFontFamilyCss(fontFamily),
-          'font-size': `${fontSize}px !important`,
-          'line-height': `${lineHeight} !important`,
-          padding: '0 24px !important',
-        },
-        img: { 'max-width': '100% !important', height: 'auto !important' },
-        p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
-        a: { color: '#92400e !important', 'text-decoration': 'underline' },
-      });
-
-      themes.register('dark', {
-        body: {
-          background: darkBg,
-          color: '#e2e8f0 !important',
-          'font-family': getFontFamilyCss(fontFamily),
-          'font-size': `${fontSize}px !important`,
-          'line-height': `${lineHeight} !important`,
-          padding: '0 24px !important',
-        },
-        img: { 'max-width': '100% !important', height: 'auto !important' },
-        p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
-        a: { color: '#fbbf24 !important', 'text-decoration': 'underline' },
-      });
-
-      themes.select(theme);
-      themes.fontSize(`${fontSize}px`);
+      if (epubPages.length > 0) {
+        const pageData = epubPages[target - 1];
+        if (pageData?.chapterTitle) {
+          setCurrentChapter(pageData.chapterTitle);
+        }
+        if (renditionRef.current && pageData?.href) {
+          renditionRef.current.display(pageData.href).catch(() => {});
+        }
+      }
     },
-    [fontFamily, fontSize, layout, lineHeight, theme],
+    [epubPages, totalPages],
   );
 
-  // Determine Spread Setting
-  const getSpreadSetting = useCallback(() => {
-    if (layout === 'single-page') return 'none';
-    if (layout === 'two-page' || layout === 'book') return 'always';
-    return 'auto';
-  }, [layout]);
-
-  // Synchronize style updates and layout changes when preferences change
-  useEffect(() => {
-    if (renditionRef.current) {
-      applyStylesToRendition(renditionRef.current);
-      try {
-        (renditionRef.current as unknown as { spread?: (val: string) => void }).spread?.(
-          getSpreadSetting(),
-        );
-      } catch {
-        // safe fallback
-      }
-    }
-  }, [applyStylesToRendition, getSpreadSetting]);
-
-  // Handle Location Change & Debounced Save
-  const handleRelocated = useCallback(
-    (location: Location) => {
-      if (!location || !location.start) return;
-
-      const cfi = location.start.cfi;
-      setCurrentCfi(cfi);
-
-      // Calculate progress percentage and page numbers
-      let pct = 0;
-      const locLocations = bookRef.current?.locations as unknown as {
-        locationFromCfi?: (cfi: string) => number;
-        total?: number;
-        percentageFromCfi?: (cfi: string) => number;
-      };
-
-      if (locLocations && locLocations.total && locLocations.percentageFromCfi) {
-        pct = locLocations.percentageFromCfi(cfi) * 100;
-        const currentLocIndex = locLocations.locationFromCfi?.(cfi);
-        if (typeof currentLocIndex === 'number' && currentLocIndex >= 0) {
-          setCurrentPage(currentLocIndex + 1);
-          setTotalPages(locLocations.total);
-        }
-      } else if (typeof location.start.percentage === 'number') {
-        pct = location.start.percentage * 100;
-        if (location.start.displayed && location.start.displayed.total > 2) {
-          setCurrentPage(location.start.displayed.page);
-          setTotalPages(location.start.displayed.total);
-        } else {
-          setCurrentPage(undefined);
-          setTotalPages(undefined);
-        }
-      } else {
-        setCurrentPage(undefined);
-        setTotalPages(undefined);
-      }
-      pct = Math.min(100, Math.max(0, pct));
+  // Handle FlipBook page turn change
+  const handleFlipPageChange = useCallback(
+    (page: number) => {
+      handleJumpToPage(page);
+      const maxPages = totalPages || epubPages.length || 1;
+      const pct = Math.min(100, Math.max(0, Math.round((page / maxPages) * 100)));
       setProgressPercentage(pct);
 
-      // Identify current chapter label from TOC
-      const locStart = location.start as unknown as { href?: string; cfi: string };
-      if (toc.length > 0 && locStart?.href) {
-        const currentHref = locStart.href;
-        const cleanCurrent = currentHref.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
-
-        const findMatchingToc = (items: NavItem[]): NavItem | null => {
-          for (const item of items) {
-            const itemHref = item.href;
-            if (itemHref) {
-              const cleanItem = itemHref.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
-              if (
-                cleanCurrent === cleanItem ||
-                cleanCurrent.endsWith(cleanItem) ||
-                cleanItem.endsWith(cleanCurrent)
-              ) {
-                return item;
-              }
-            }
-            if (item.subitems && item.subitems.length > 0) {
-              const matchedSub = findMatchingToc(item.subitems);
-              if (matchedSub) return matchedSub;
-            }
-          }
-          return null;
-        };
-
-        const matchingItem = findMatchingToc(toc);
-        if (matchingItem && matchingItem.label) {
-          setCurrentChapter(matchingItem.label.trim());
-        }
-      }
-
-      // Debounce saving progress to API (1.5 seconds)
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       saveTimeoutRef.current = setTimeout(() => {
         updateProgressMutation.mutate({
           locationType: LocationType.EPUB_CFI,
-          locationValue: cfi,
-          progressPercentage: Math.round(pct * 10) / 10,
-          currentPage: location.start.displayed?.page,
-          totalPages: location.start.displayed?.total,
+          locationValue: epubPages[page - 1]?.href || String(page),
+          progressPercentage: pct,
+          currentPage: page,
+          totalPages: maxPages,
           settings: {
             theme,
-            fontFamily,
-            fontSize,
-            lineHeight,
-            layout,
+            zoom,
+            zoomMode,
+            viewMode,
+            rotation,
           },
         });
       }, 1500);
     },
-    [fontFamily, fontSize, layout, lineHeight, theme, toc, updateProgressMutation],
+    [
+      epubPages,
+      handleJumpToPage,
+      rotation,
+      theme,
+      totalPages,
+      updateProgressMutation,
+      viewMode,
+      zoom,
+      zoomMode,
+    ],
   );
 
-  // Page Turn Actions
+  // Jump to specific CFI or location
+  const handleJumpToLocation = useCallback(
+    (_locType: LocationType, locValue: string) => {
+      const parsed = parseInt(locValue, 10);
+      if (!isNaN(parsed)) {
+        handleJumpToPage(parsed);
+      } else if (renditionRef.current) {
+        renditionRef.current.display(locValue).catch(() => {});
+      }
+    },
+    [handleJumpToPage],
+  );
+
+  // Next / Prev standard handlers for non-flipbook modes
   const handlePrev = useCallback(() => {
-    playPageTurnSound();
-    if (renditionRef.current) {
+    if (viewMode === 'flipbook') {
+      handleJumpToPage(Math.max(1, currentPage - 1));
+    } else if (renditionRef.current) {
       renditionRef.current.prev();
     }
-  }, [playPageTurnSound]);
+  }, [currentPage, handleJumpToPage, viewMode]);
 
   const handleNext = useCallback(() => {
-    playPageTurnSound();
-    if (renditionRef.current) {
-      // If currently on a standalone cover wrapper, jump directly to the first readable chapter
-      const loc = renditionRef.current.location as unknown as
-        { start?: { href?: string } } | undefined;
-      const currentHref = loc?.start?.href?.toLowerCase() || '';
-      if ((currentHref.includes('wrap') || currentHref.includes('cover')) && bookRef.current) {
-        const spine =
-          (bookRef.current as unknown as { spine?: { spineItems?: Array<{ href?: string }> } })
-            ?.spine?.spineItems || [];
-        if (spine.length > 1 && spine[1]?.href) {
-          renditionRef.current.display(spine[1].href);
-          return;
-        }
-      }
+    if (viewMode === 'flipbook') {
+      const maxPages = totalPages || epubPages.length || 1;
+      handleJumpToPage(Math.min(maxPages, currentPage + 1));
+    } else if (renditionRef.current) {
       renditionRef.current.next();
     }
-  }, [playPageTurnSound]);
-
-  // FlipBook Page Navigation Handlers
-  const handleFlipPageChange = useCallback(
-    (page: number) => {
-      setCurrentPage(page);
-      if (epubPages.length > 0) {
-        const pct = Math.min(100, Math.max(0, Math.round((page / epubPages.length) * 100)));
-        setProgressPercentage(pct);
-
-        const activePageData = epubPages[page - 1];
-        if (activePageData?.chapterTitle) {
-          setCurrentChapter(activePageData.chapterTitle);
-        }
-
-        // Debounce saving progress to backend
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-        saveTimeoutRef.current = setTimeout(() => {
-          updateProgressMutation.mutate({
-            locationType: LocationType.EPUB_CFI,
-            locationValue: activePageData?.href || String(page),
-            progressPercentage: pct,
-            currentPage: page,
-            totalPages: epubPages.length,
-            settings: {
-              theme,
-              fontFamily,
-              fontSize,
-              lineHeight,
-              layout,
-            },
-          });
-        }, 1500);
-      }
-    },
-    [epubPages, fontFamily, fontSize, layout, lineHeight, theme, updateProgressMutation],
-  );
-
-  const handleJumpToPage = useCallback(
-    (pageNum: number) => {
-      if (epubPages.length > 0) {
-        const target = Math.max(1, Math.min(epubPages.length, pageNum));
-        handleFlipPageChange(target);
-      }
-    },
-    [epubPages.length, handleFlipPageChange],
-  );
-
-  // Jump to specific TOC href
-  const handleSelectChapter = useCallback(
-    (href: string) => {
-      if ((layout === 'book' || !layout) && epubPages.length > 0) {
-        const cleanTarget = href.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
-        const foundIndex = epubPages.findIndex((p) => {
-          if (!p.href) return false;
-          const cleanPageHref = p.href.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
-          return (
-            cleanPageHref === cleanTarget ||
-            cleanPageHref.endsWith(cleanTarget) ||
-            cleanTarget.endsWith(cleanPageHref)
-          );
-        });
-        if (foundIndex >= 0) {
-          handleFlipPageChange(foundIndex + 1);
-          return;
-        }
-      }
-      if (renditionRef.current) {
-        renditionRef.current.display(href);
-      }
-    },
-    [epubPages, handleFlipPageChange, layout],
-  );
-
-  // Scrub to approximate percentage
-  const handleSeekPercentage = useCallback(
-    (percentage: number) => {
-      if ((layout === 'book' || !layout) && epubPages.length > 0) {
-        const targetPage = Math.max(
-          1,
-          Math.min(epubPages.length, Math.round((percentage / 100) * epubPages.length)),
-        );
-        handleFlipPageChange(targetPage);
-        return;
-      }
-      if (bookRef.current && bookRef.current.locations && renditionRef.current) {
-        try {
-          const cfi = bookRef.current.locations.cfiFromPercentage(percentage / 100);
-          if (cfi) {
-            renditionRef.current.display(cfi);
-          }
-        } catch {
-          // Fallback if locations are still generating
-        }
-      }
-    },
-    [epubPages.length, handleFlipPageChange, layout],
-  );
-
-  // Keyboard navigation handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is inside an input or modal is open
-      if (isSettingsOpen || isTocOpen) return;
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
-        e.preventDefault();
-        handleNext();
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        handlePrev();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, isSettingsOpen, isTocOpen]);
-
-  // Callbacks ref to maintain current closures without re-triggering main initialization
-  const callbacksRef = useRef({
-    handleRelocated,
-    handleNext,
-    handlePrev,
-    applyStylesToRendition,
-    getSpreadSetting,
-    savedProgress,
-    layout,
-  });
-
-  useEffect(() => {
-    callbacksRef.current = {
-      handleRelocated,
-      handleNext,
-      handlePrev,
-      applyStylesToRendition,
-      getSpreadSetting,
-      savedProgress,
-      layout,
-    };
-  });
+  }, [currentPage, epubPages.length, handleJumpToPage, totalPages, viewMode]);
 
   // Main EPUB Initialization
   useEffect(() => {
@@ -512,18 +229,15 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
             if (!isCancelled && extracted.length > 0) {
               setEpubPages(extracted);
               setTotalPages(extracted.length);
-              setIsExtractingPages(false);
               setIsLoadingBook(false);
-              const saved = callbacksRef.current.savedProgress;
-              if (saved?.currentPage && saved.currentPage >= 1) {
-                setCurrentPage(Math.min(extracted.length, saved.currentPage));
+              if (savedProgress?.currentPage && savedProgress.currentPage >= 1) {
+                setCurrentPage(Math.min(extracted.length, savedProgress.currentPage));
               }
             }
           })
           .catch((err) => {
             console.warn('FlipBook page extraction error:', err);
             if (!isCancelled) {
-              setIsExtractingPages(false);
               setIsLoadingBook(false);
             }
           });
@@ -535,144 +249,24 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           }
         });
 
-        // Configure Rendition
+        // Configure Rendition for standard spread fallback
         const rendition = book.renderTo(viewerRef.current, {
           width: '100%',
           height: '100%',
-          spread: callbacksRef.current.getSpreadSetting(),
+          spread: 'always',
           minSpreadWidth: 800,
           flow: 'paginated',
         });
         renditionRef.current = rendition;
 
-        // Apply styles & themes
-        callbacksRef.current.applyStylesToRendition(rendition);
+        // Display start target in background
+        const startTarget = savedProgress?.locationValue || undefined;
+        rendition.display(startTarget).catch(() => {});
 
-        // Bind location change event
+        // Listen for relocated events
         rendition.on('relocated', (location: Location) => {
-          if (!isCancelled) {
-            callbacksRef.current.handleRelocated(location);
-          }
-        });
-
-        // Capture text selection CFI for instant bookmarking/annotation
-        rendition.on('selected', (cfiRange: string) => {
-          if (!isCancelled && cfiRange) {
-            setCurrentCfi(cfiRange);
-          }
-        });
-
-        // Bind keyboard navigation inside EPUB iframe
-        rendition.on('keydown', (e: KeyboardEvent) => {
-          if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
-            e.preventDefault();
-            callbacksRef.current.handleNext();
-          } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-            e.preventDefault();
-            callbacksRef.current.handlePrev();
-          }
-        });
-
-        // Handle click inside EPUB iframe to turn pages
-        rendition.on('click', (e: MouseEvent) => {
-          if (isCancelled) return;
-
-          // Don't turn pages if user is selecting text
-          const activeSelection = window.getSelection?.()?.toString();
-          if (activeSelection && activeSelection.trim().length > 0) return;
-
-          // Don't turn pages if clicked on interactive link/button
-          const target = e.target as HTMLElement | null;
-          if (target && target.closest?.('a, button, input, select, textarea')) return;
-
-          const targetDoc = (e.target as HTMLElement)?.ownerDocument || document;
-          const viewportWidth = targetDoc.documentElement?.clientWidth || window.innerWidth;
-          const x = e.clientX || 0;
-
-          if (x > viewportWidth * 0.55) {
-            callbacksRef.current.handleNext();
-          } else if (x < viewportWidth * 0.45) {
-            callbacksRef.current.handlePrev();
-          }
-        });
-
-        // Determine starting location: saved CFI or beginning
-        let startTarget = callbacksRef.current.savedProgress?.locationValue || undefined;
-
-        // If no saved progress, or saved progress is stuck on the cover section at 0%
-        const isStuckOnCover =
-          startTarget &&
-          (startTarget.toLowerCase().includes('wrap') ||
-            startTarget.toLowerCase().includes('cover')) &&
-          (callbacksRef.current.savedProgress?.progressPercentage ?? 0) <= 1;
-
-        if (!startTarget || isStuckOnCover) {
-          try {
-            const loadedObj = book.loaded as unknown as { spine?: Promise<unknown> };
-            if (loadedObj?.spine) {
-              await loadedObj.spine;
-            }
-            const spine = (
-              book as unknown as {
-                spine?: {
-                  spineItems?: Array<{
-                    href?: string;
-                    idref?: string;
-                    linear?: string | boolean;
-                  }>;
-                };
-              }
-            )?.spine;
-            const items = spine?.spineItems || [];
-            if (items.length > 1 && items[0]) {
-              const first = items[0];
-              const href = (first.href || '').toLowerCase();
-              const idref = (first.idref || '').toLowerCase();
-              const isCover =
-                href.includes('cover') ||
-                href.includes('wrap') ||
-                idref.includes('cover') ||
-                idref.includes('wrap') ||
-                first.linear === false ||
-                first.linear === 'no';
-
-              if (isCover && items[1]?.href) {
-                startTarget = items[1].href;
-              }
-            }
-          } catch (e) {
-            console.warn('Could not inspect spine for cover bypass:', e);
-          }
-        }
-
-        if (
-          callbacksRef.current.getSpreadSetting() === 'none' ||
-          callbacksRef.current.layout === 'two-page' ||
-          callbacksRef.current.layout === 'single-page'
-        ) {
-          await rendition.display(startTarget);
-        } else {
-          // In mode book, start display in background so epubjs measures without blocking
-          rendition.display(startTarget).catch(() => {});
-        }
-        if (isCancelled) return;
-
-        setIsLoadingBook(false);
-
-        // Generate location index in background for precise percentage
-        book.ready.then(() => {
-          if (!isCancelled) {
-            book.locations
-              .generate(1000)
-              .then(() => {
-                if (!isCancelled && renditionRef.current) {
-                  const currentLoc = renditionRef.current.currentLocation() as unknown as Location;
-                  if (currentLoc && currentLoc.start) {
-                    callbacksRef.current.handleRelocated(currentLoc);
-                  }
-                }
-              })
-              .catch(() => {});
+          if (!isCancelled && location && location.start) {
+            setCurrentCfi(location.start.cfi);
           }
         });
       } catch (err: unknown) {
@@ -709,12 +303,26 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         bookRef.current = null;
       }
     };
-  }, [author, bookId, bookTitle]);
+  }, [author, bookId, bookTitle, savedProgress?.currentPage, savedProgress?.locationValue]);
 
-  // Theme-aware Canvas Background
-  const isBookMode = layout === 'book' || layout === 'auto' || !layout;
+  // Synchronize rendition spread when viewMode changes
+  useEffect(() => {
+    if (renditionRef.current) {
+      try {
+        const spreadSetting = viewMode === 'single-page' ? 'none' : 'always';
+        (renditionRef.current as unknown as { spread?: (val: string) => void }).spread?.(
+          spreadSetting,
+        );
+      } catch {
+        // safe fallback
+      }
+    }
+  }, [viewMode]);
 
-  const canvasBgClass = isBookMode
+  const isFlipBook = viewMode === 'flipbook';
+  const effectiveTotalPages = totalPages || epubPages.length || 1;
+
+  const canvasBgClass = isFlipBook
     ? 'bg-[#1b110a] text-neutral-100'
     : {
         light: 'bg-white text-neutral-900',
@@ -724,52 +332,41 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
   return (
     <div className={`fixed inset-0 flex flex-col overflow-hidden select-none ${canvasBgClass}`}>
-      {/* Top Header Bar */}
-      <ReaderHeader
+      {/* 1. Top Header Bar (100% Identical to PDF Reader Header) */}
+      <PdfReaderHeader
         title={bookTitle}
         author={author}
-        chapterTitle={currentChapter}
-        theme={theme}
-        layout={layout}
-        onLayoutChange={(newLayout) => {
-          setLayout(newLayout);
-          if (newLayout !== 'book' && renditionRef.current) {
-            renditionRef.current.display(currentCfi || undefined);
-          }
-        }}
-        currentPage={currentPage || 1}
-        totalPages={epubPages.length > 0 ? epubPages.length : totalPages}
+        currentPage={currentPage}
+        totalPages={effectiveTotalPages}
         onJumpToPage={handleJumpToPage}
         isTocOpen={isTocOpen}
         onToggleToc={() => {
           setIsTocOpen(!isTocOpen);
-          setIsSettingsOpen(false);
           setIsBookmarksOpen(false);
         }}
+        isThumbnailsOpen={false}
+        onToggleThumbnails={() => {}}
         isBookmarksOpen={isBookmarksOpen}
         onToggleBookmarks={() => {
           setIsBookmarksOpen(!isBookmarksOpen);
           setIsTocOpen(false);
-          setIsSettingsOpen(false);
         }}
         bookmarkCount={bookmarks.length}
-        isSettingsOpen={isSettingsOpen}
-        onToggleSettings={() => {
-          setIsSettingsOpen(!isSettingsOpen);
-          setIsTocOpen(false);
-          setIsBookmarksOpen(false);
-        }}
         isFullscreen={isFullscreen}
         onToggleFullscreen={handleToggleFullscreen}
       />
 
-      {/* Main Reading Stage */}
-      <main className="relative flex-1 w-full overflow-hidden flex items-center justify-center">
+      {/* 2. Main Reading Canvas Stage */}
+      <main
+        className={`relative flex-1 w-full flex items-center justify-center ${
+          isFlipBook ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 overflow-auto'
+        }`}
+      >
         {/* Loading Spinner */}
         {(isLoadingBook || isProgressLoading) && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-inherit backdrop-blur-xs">
             <Loader2 className="w-8 h-8 animate-spin text-amber-600 mb-3" />
-            <p className="text-xs font-medium opacity-75">Opening book...</p>
+            <p className="text-xs font-medium opacity-75">Loading book in 3D Mode...</p>
           </div>
         )}
 
@@ -790,44 +387,34 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           </div>
         )}
 
-        {/* 1. Real 3D FlipBook View (Mode Book) */}
-        {isBookMode && epubPages.length > 0 && !loadError && (
+        {/* Real 3D FlipBook View (Default Mode) */}
+        {isFlipBook && !isLoadingBook && !loadError && (
           <div className="w-full h-full p-0 overflow-hidden">
             <FlipBookView
               title={bookTitle}
               author={author}
-              totalPages={epubPages.length}
+              totalPages={effectiveTotalPages}
               pages={epubPages}
-              currentPage={currentPage || 1}
+              currentPage={currentPage}
               onPageChange={handleFlipPageChange}
               theme={theme}
             />
           </div>
         )}
 
-        {/* 3D Mode Book Extracting Fallback */}
-        {isBookMode && isExtractingPages && !loadError && !isLoadingBook && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-inherit backdrop-blur-xs">
-            <Loader2 className="w-8 h-8 animate-spin text-amber-600 mb-3" />
-            <p className="text-xs font-serif italic text-amber-900/80 dark:text-amber-200/80">
-              Opening book in 3D Mode...
-            </p>
-          </div>
-        )}
-
-        {/* 2. Standard EPUB Render Canvas Container (Two-Page / Single Page) */}
+        {/* Standard EPUB Render Container (When user switches view mode to two-page or single-page) */}
         <div
           ref={viewerRef}
           className={
-            isBookMode
+            isFlipBook
               ? 'absolute inset-0 pointer-events-none opacity-0 -z-10'
               : 'w-full h-full max-w-6xl mx-auto relative px-2 sm:px-6 md:px-12 py-2'
           }
           style={{ minHeight: '100%' }}
         />
 
-        {/* Center Book Spine Divider Shadow (for two-page spread authenticity in standard mode) */}
-        {!isBookMode && layout !== 'single-page' && (
+        {/* Center Book Spine Divider Shadow (for standard two-page spread view) */}
+        {!isFlipBook && viewMode !== 'single-page' && (
           <div
             className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none opacity-20 hidden md:block"
             style={{
@@ -837,8 +424,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           />
         )}
 
-        {/* Stage-Anchored Left Navigation Button (Standard Mode) */}
-        {!isBookMode && !isLoadingBook && !loadError && (
+        {/* Left Navigation Button (Standard View) */}
+        {!isFlipBook && !isLoadingBook && !loadError && (
           <button
             type="button"
             onClick={handlePrev}
@@ -850,8 +437,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           </button>
         )}
 
-        {/* Stage-Anchored Right Navigation Button (Standard Mode) */}
-        {!isBookMode && !isLoadingBook && !loadError && (
+        {/* Right Navigation Button (Standard View) */}
+        {!isFlipBook && !isLoadingBook && !loadError && (
           <button
             type="button"
             onClick={handleNext}
@@ -862,65 +449,41 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
             <ChevronRight className="w-5 h-5" />
           </button>
         )}
-
-        {/* Invisible Click Margins for Quick Page Turns (Standard Mode) */}
-        {!isBookMode && !isLoadingBook && !loadError && (
-          <>
-            <div
-              onClick={handlePrev}
-              className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 cursor-w-resize z-10 opacity-0 hover:opacity-10 transition-opacity bg-black"
-              title="Previous Page"
-              aria-label="Previous Page"
-            />
-            <div
-              onClick={handleNext}
-              className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 cursor-e-resize z-10 opacity-0 hover:opacity-10 transition-opacity bg-black"
-              title="Next Page"
-              aria-label="Next Page"
-            />
-          </>
-        )}
       </main>
 
-      {/* Bottom Footer Control Bar */}
-      <ReaderFooter
-        percentage={progressPercentage}
-        currentPage={currentPage || 1}
-        totalPages={epubPages.length > 0 ? epubPages.length : totalPages}
-        onPrev={
-          isBookMode ? () => handleJumpToPage(Math.max(1, (currentPage || 1) - 1)) : handlePrev
-        }
-        onNext={isBookMode ? () => handleJumpToPage((currentPage || 1) + 1) : handleNext}
-        onSeekPercentage={handleSeekPercentage}
+      {/* 3. Footer Navigation Bar (100% Identical to PDF Reader Footer) */}
+      <PdfReaderFooter
+        currentPage={currentPage}
+        totalPages={effectiveTotalPages}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onSeekPage={handleJumpToPage}
         theme={theme}
       />
 
-      {/* Table of Contents Drawer */}
-      <ReaderTocSidebar
+      {/* 4. Table of Contents / Outline Drawer */}
+      <PdfReaderTocSidebar
         isOpen={isTocOpen}
         onClose={() => setIsTocOpen(false)}
-        toc={toc}
-        currentHref={currentCfi}
-        onSelectChapter={handleSelectChapter}
+        outline={outline}
+        currentPage={currentPage}
+        onSelectPage={handleJumpToPage}
         theme={theme}
       />
 
-      {/* Bookmarks & Annotations Drawer */}
+      {/* 5. Bookmarks & Annotations Drawer */}
       <BookmarksSidebar
         isOpen={isBookmarksOpen}
         onClose={() => setIsBookmarksOpen(false)}
         bookId={bookId}
         bookTitle={bookTitle}
         currentLocationType={LocationType.EPUB_CFI}
-        currentLocationValue={currentCfi}
+        currentLocationValue={currentCfi || String(currentPage)}
         currentProgressPercentage={progressPercentage}
-        currentLabel={currentChapter || `Page ${currentPage || ''}`}
+        currentLabel={currentChapter || `Page ${currentPage} of ${effectiveTotalPages}`}
         onJumpToLocation={handleJumpToLocation}
         theme={theme}
       />
-
-      {/* Reader Settings Modal */}
-      <ReaderSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 };
