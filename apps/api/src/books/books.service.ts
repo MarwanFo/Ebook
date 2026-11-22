@@ -572,9 +572,7 @@ export class BooksService {
       for (const b of data.results || []) {
         // Find epub format
         const hasEpub =
-          b.formats['application/epub+zip'] ||
-          b.formats['application/octet-stream'] ||
-          null;
+          b.formats['application/epub+zip'] || b.formats['application/octet-stream'] || null;
 
         if (!hasEpub) continue;
 
@@ -624,8 +622,10 @@ export class BooksService {
         results: results.length > 0 ? results : CURATED_CLASSICS,
       };
     } catch (error) {
-      this.logger.warn(`Gutendex fetch failed or timed out: ${(error as Error).message}. Returning curated collection.`);
-      
+      this.logger.warn(
+        `Gutendex fetch failed or timed out: ${(error as Error).message}. Returning curated collection.`,
+      );
+
       // Filter curated classics if search or topic is present
       let filtered = CURATED_CLASSICS;
       if (query.search) {
@@ -639,9 +639,7 @@ export class BooksService {
       }
       if (query.topic) {
         const t = query.topic.toLowerCase();
-        filtered = filtered.filter((b) =>
-          b.subjects.some((sub) => sub.toLowerCase().includes(t)),
-        );
+        filtered = filtered.filter((b) => b.subjects.some((sub) => sub.toLowerCase().includes(t)));
       }
 
       return {
@@ -654,7 +652,9 @@ export class BooksService {
   }
 
   async importPublicBook(userId: string, dto: ImportPublicBookDto): Promise<BookUploadResponseDto> {
-    this.logger.log(`User ${userId} importing public book: "${dto.title}" (Gutenberg ID: ${dto.gutenbergId})`);
+    this.logger.log(
+      `User ${userId} importing public book: "${dto.title}" (Gutenberg ID: ${dto.gutenbergId})`,
+    );
 
     // 1. Fetch the EPUB file from downloadUrl
     let fileBuffer: Buffer;
@@ -674,7 +674,9 @@ export class BooksService {
           headers: { 'User-Agent': 'BookFlow-EbookReader/1.0' },
         });
         if (!fallbackRes.ok) {
-          throw new BadRequestException(`Failed to download book from repository (HTTP ${res.status})`);
+          throw new BadRequestException(
+            `Failed to download book from repository (HTTP ${res.status})`,
+          );
         }
         fileBuffer = Buffer.from(await fallbackRes.arrayBuffer());
       } else {
@@ -716,11 +718,7 @@ export class BooksService {
     const fileId = uuidv4();
     const bookSubDir = `books/${userId}`;
     const bookFilename = `${fileId}.${validated.format.toLowerCase()}`;
-    const bookStorageKey = await this.storageService.saveFile(
-      bookSubDir,
-      bookFilename,
-      fileBuffer,
-    );
+    const bookStorageKey = await this.storageService.saveFile(bookSubDir, bookFilename, fileBuffer);
 
     let coverStorageKey: string | null = null;
     if (coverBuffer) {

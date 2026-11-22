@@ -66,9 +66,7 @@ export class BooksController {
   @Public()
   @Get('explore')
   @ApiOperation({ summary: 'Explore and search public domain classics' })
-  async explore(
-    @Query() query: ExploreBooksQueryDto,
-  ): Promise<ExploreBooksResponseDto> {
+  async explore(@Query() query: ExploreBooksQueryDto): Promise<ExploreBooksResponseDto> {
     return this.booksService.explorePublicBooks(query);
   }
 

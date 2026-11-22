@@ -47,17 +47,18 @@ export const ExplorePage: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
 
   // Fetch explore books
-  const { data: exploreData, isLoading, isFetching } = useExploreBooks({
+  const {
+    data: exploreData,
+    isLoading,
+    isFetching,
+  } = useExploreBooks({
     page: currentPage,
     search: debouncedSearch || undefined,
     topic: selectedTopic || undefined,
   });
 
   // Fetch user's existing books to flag books already in their library
-  const { data: userBooksData } = useBooks(
-    { limit: 100 },
-    { enabled: isAuthenticated },
-  );
+  const { data: userBooksData } = useBooks({ limit: 100 }, { enabled: isAuthenticated });
 
   const importMutation = useImportPublicBook();
 
@@ -133,7 +134,8 @@ export const ExplorePage: React.FC = () => {
           </h1>
           <p className="text-sm text-ink-600 dark:text-paper-400 mt-1 max-w-2xl leading-relaxed">
             Browse timeless public-domain masterpieces. Click <strong>Add to Library</strong> to
-            instantly save them to your personal collection and read them in the 3D realistic reader.
+            instantly save them to your personal collection and read them in the 3D realistic
+            reader.
           </p>
         </div>
 
@@ -294,7 +296,11 @@ export const ExplorePage: React.FC = () => {
                   {book.downloadCount > 0 && (
                     <div className="absolute top-1.5 right-1.5 z-10 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-xs text-[10px] font-mono text-amber-200 font-medium flex items-center gap-1 shadow-xs pointer-events-none">
                       <Flame className="w-3 h-3 text-orange-400" />
-                      <span>{book.downloadCount > 1000 ? `${Math.round(book.downloadCount / 1000)}k` : book.downloadCount}</span>
+                      <span>
+                        {book.downloadCount > 1000
+                          ? `${Math.round(book.downloadCount / 1000)}k`
+                          : book.downloadCount}
+                      </span>
                     </div>
                   )}
                 </div>

@@ -109,4 +109,3 @@ export interface ExploreBooksResponseDto {
   previousPage: number | null;
   results: PublicBookDto[];
 }
-

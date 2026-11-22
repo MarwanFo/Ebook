@@ -267,14 +267,13 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   const handleNext = useCallback(() => {
     if (renditionRef.current) {
       // If currently on a standalone cover wrapper, jump directly to the first readable chapter
-      const loc = renditionRef.current.location as unknown as { start?: { href?: string } } | undefined;
+      const loc = renditionRef.current.location as unknown as
+        { start?: { href?: string } } | undefined;
       const currentHref = loc?.start?.href?.toLowerCase() || '';
-      if (
-        (currentHref.includes('wrap') || currentHref.includes('cover')) &&
-        bookRef.current
-      ) {
-        const spine = (bookRef.current as unknown as { spine?: { spineItems?: Array<{ href?: string }> } })
-          ?.spine?.spineItems || [];
+      if ((currentHref.includes('wrap') || currentHref.includes('cover')) && bookRef.current) {
+        const spine =
+          (bookRef.current as unknown as { spine?: { spineItems?: Array<{ href?: string }> } })
+            ?.spine?.spineItems || [];
         if (spine.length > 1 && spine[1]?.href) {
           renditionRef.current.display(spine[1].href);
           return;
@@ -438,7 +437,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         // If no saved progress, or saved progress is stuck on the cover section at 0%
         const isStuckOnCover =
           startTarget &&
-          (startTarget.toLowerCase().includes('wrap') || startTarget.toLowerCase().includes('cover')) &&
+          (startTarget.toLowerCase().includes('wrap') ||
+            startTarget.toLowerCase().includes('cover')) &&
           (callbacksRef.current.savedProgress?.progressPercentage ?? 0) <= 1;
 
         if (!startTarget || isStuckOnCover) {
@@ -447,15 +447,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
             if (loadedObj?.spine) {
               await loadedObj.spine;
             }
-            const spine = (book as unknown as {
-              spine?: {
-                spineItems?: Array<{
-                  href?: string;
-                  idref?: string;
-                  linear?: string | boolean;
-                }>;
-              };
-            })?.spine;
+            const spine = (
+              book as unknown as {
+                spine?: {
+                  spineItems?: Array<{
+                    href?: string;
+                    idref?: string;
+                    linear?: string | boolean;
+                  }>;
+                };
+              }
+            )?.spine;
             const items = spine?.spineItems || [];
             if (items.length > 1 && items[0]) {
               const first = items[0];
@@ -486,14 +488,17 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         // Generate location index in background for precise percentage
         book.ready.then(() => {
           if (!isCancelled) {
-            book.locations.generate(1000).then(() => {
-              if (!isCancelled && renditionRef.current) {
-                const currentLoc = renditionRef.current.currentLocation() as unknown as Location;
-                if (currentLoc && currentLoc.start) {
-                  callbacksRef.current.handleRelocated(currentLoc);
+            book.locations
+              .generate(1000)
+              .then(() => {
+                if (!isCancelled && renditionRef.current) {
+                  const currentLoc = renditionRef.current.currentLocation() as unknown as Location;
+                  if (currentLoc && currentLoc.start) {
+                    callbacksRef.current.handleRelocated(currentLoc);
+                  }
                 }
-              }
-            }).catch(() => {});
+              })
+              .catch(() => {});
           }
         });
       } catch (err: unknown) {

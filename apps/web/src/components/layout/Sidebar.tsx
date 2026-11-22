@@ -1,6 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Library, Compass, Settings, LogIn, UserPlus, Sparkles } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Library,
+  Compass,
+  Settings,
+  LogIn,
+  UserPlus,
+  Sparkles,
+} from 'lucide-react';
 import { useUIStore } from '../../stores/ui-store';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
