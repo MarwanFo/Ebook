@@ -646,7 +646,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
   // Theme-aware Canvas Background
   const activeDesk = deskThemes[deskMode];
-  const isBookMode = layout === 'book' || !layout;
+  const isBookMode = layout === 'book' || layout === 'auto' || !layout;
 
   const canvasBgClass = isBookMode
     ? `${activeDesk.bg} text-neutral-100`

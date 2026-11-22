@@ -39,7 +39,13 @@ function loadStoredSettings(): Partial<ReaderSettingsState> {
   if (!storage) return {};
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    // If legacy 'auto' or unset, default to 'book' mode
+    if (parsed.layout === 'auto' || !parsed.layout) {
+      parsed.layout = 'book';
+    }
+    return parsed;
   } catch {
     return {};
   }
