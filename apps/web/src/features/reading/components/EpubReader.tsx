@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ePubLibrary, { Book, Rendition, Location, NavItem } from 'epubjs';
 import { LocationType } from '@bookflow/shared-types';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { booksApi } from '../../books/services/books-api';
 import { useReadingProgress } from '../hooks/useReadingProgress';
 import { useUpdateProgress } from '../hooks/useUpdateProgress';
@@ -108,6 +108,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           'line-height': `${lineHeight} !important`,
           padding: '0 24px !important',
         },
+        img: { 'max-width': '100% !important', height: 'auto !important' },
         p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
         a: { color: '#b45309 !important', 'text-decoration': 'underline' },
       });
@@ -121,6 +122,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           'line-height': `${lineHeight} !important`,
           padding: '0 24px !important',
         },
+        img: { 'max-width': '100% !important', height: 'auto !important' },
         p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
         a: { color: '#92400e !important', 'text-decoration': 'underline' },
       });
@@ -134,6 +136,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           'line-height': `${lineHeight} !important`,
           padding: '0 24px !important',
         },
+        img: { 'max-width': '100% !important', height: 'auto !important' },
         p: { 'line-height': `${lineHeight} !important`, 'margin-bottom': '1em !important' },
         a: { color: '#fbbf24 !important', 'text-decoration': 'underline' },
       });
@@ -166,27 +169,66 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
       const cfi = location.start.cfi;
       setCurrentCfi(cfi);
 
-      // Calculate progress percentage
+      // Calculate progress percentage and page numbers
       let pct = 0;
-      if (bookRef.current && bookRef.current.locations && bookRef.current.locations.total) {
-        pct = bookRef.current.locations.percentageFromCfi(cfi) * 100;
+      const locLocations = bookRef.current?.locations as unknown as {
+        locationFromCfi?: (cfi: string) => number;
+        total?: number;
+        percentageFromCfi?: (cfi: string) => number;
+      };
+
+      if (locLocations && locLocations.total && locLocations.percentageFromCfi) {
+        pct = locLocations.percentageFromCfi(cfi) * 100;
+        const currentLocIndex = locLocations.locationFromCfi?.(cfi);
+        if (typeof currentLocIndex === 'number' && currentLocIndex >= 0) {
+          setCurrentPage(currentLocIndex + 1);
+          setTotalPages(locLocations.total);
+        }
       } else if (typeof location.start.percentage === 'number') {
         pct = location.start.percentage * 100;
+        if (location.start.displayed && location.start.displayed.total > 2) {
+          setCurrentPage(location.start.displayed.page);
+          setTotalPages(location.start.displayed.total);
+        } else {
+          setCurrentPage(undefined);
+          setTotalPages(undefined);
+        }
+      } else {
+        setCurrentPage(undefined);
+        setTotalPages(undefined);
       }
       pct = Math.min(100, Math.max(0, pct));
       setProgressPercentage(pct);
 
-      if (location.start.displayed) {
-        setCurrentPage(location.start.displayed.page);
-        setTotalPages(location.start.displayed.total);
-      }
-
       // Identify current chapter label from TOC
-      if (toc.length > 0 && location.start.cfi) {
-        const matchingItem = toc.find((item) =>
-          item.href ? location.start.cfi.includes(item.href) : false,
-        );
-        if (matchingItem) {
+      const locStart = location.start as unknown as { href?: string; cfi: string };
+      if (toc.length > 0 && locStart?.href) {
+        const currentHref = locStart.href;
+        const cleanCurrent = currentHref.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+
+        const findMatchingToc = (items: NavItem[]): NavItem | null => {
+          for (const item of items) {
+            const itemHref = item.href;
+            if (itemHref) {
+              const cleanItem = itemHref.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+              if (
+                cleanCurrent === cleanItem ||
+                cleanCurrent.endsWith(cleanItem) ||
+                cleanItem.endsWith(cleanCurrent)
+              ) {
+                return item;
+              }
+            }
+            if (item.subitems && item.subitems.length > 0) {
+              const matchedSub = findMatchingToc(item.subitems);
+              if (matchedSub) return matchedSub;
+            }
+          }
+          return null;
+        };
+
+        const matchingItem = findMatchingToc(toc);
+        if (matchingItem && matchingItem.label) {
           setCurrentChapter(matchingItem.label.trim());
         }
       }
@@ -224,6 +266,20 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
   const handleNext = useCallback(() => {
     if (renditionRef.current) {
+      // If currently on a standalone cover wrapper, jump directly to the first readable chapter
+      const loc = renditionRef.current.location as unknown as { start?: { href?: string } } | undefined;
+      const currentHref = loc?.start?.href?.toLowerCase() || '';
+      if (
+        (currentHref.includes('wrap') || currentHref.includes('cover')) &&
+        bookRef.current
+      ) {
+        const spine = (bookRef.current as unknown as { spine?: { spineItems?: Array<{ href?: string }> } })
+          ?.spine?.spineItems || [];
+        if (spine.length > 1 && spine[1]?.href) {
+          renditionRef.current.display(spine[1].href);
+          return;
+        }
+      }
       renditionRef.current.next();
     }
   }, []);
@@ -353,8 +409,74 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           }
         });
 
+        // Handle click inside EPUB iframe to turn pages
+        rendition.on('click', (e: MouseEvent) => {
+          if (isCancelled) return;
+
+          // Don't turn pages if user is selecting text
+          const activeSelection = window.getSelection?.()?.toString();
+          if (activeSelection && activeSelection.trim().length > 0) return;
+
+          // Don't turn pages if clicked on interactive link/button
+          const target = e.target as HTMLElement | null;
+          if (target && target.closest?.('a, button, input, select, textarea')) return;
+
+          const targetDoc = (e.target as HTMLElement)?.ownerDocument || document;
+          const viewportWidth = targetDoc.documentElement?.clientWidth || window.innerWidth;
+          const x = e.clientX || 0;
+
+          if (x > viewportWidth * 0.55) {
+            callbacksRef.current.handleNext();
+          } else if (x < viewportWidth * 0.45) {
+            callbacksRef.current.handlePrev();
+          }
+        });
+
         // Determine starting location: saved CFI or beginning
-        const startTarget = callbacksRef.current.savedProgress?.locationValue || undefined;
+        let startTarget = callbacksRef.current.savedProgress?.locationValue || undefined;
+
+        // If no saved progress, or saved progress is stuck on the cover section at 0%
+        const isStuckOnCover =
+          startTarget &&
+          (startTarget.toLowerCase().includes('wrap') || startTarget.toLowerCase().includes('cover')) &&
+          (callbacksRef.current.savedProgress?.progressPercentage ?? 0) <= 1;
+
+        if (!startTarget || isStuckOnCover) {
+          try {
+            const loadedObj = book.loaded as unknown as { spine?: Promise<unknown> };
+            if (loadedObj?.spine) {
+              await loadedObj.spine;
+            }
+            const spine = (book as unknown as {
+              spine?: {
+                spineItems?: Array<{
+                  href?: string;
+                  idref?: string;
+                  linear?: string | boolean;
+                }>;
+              };
+            })?.spine;
+            const items = spine?.spineItems || [];
+            if (items.length > 1 && items[0]) {
+              const first = items[0];
+              const href = (first.href || '').toLowerCase();
+              const idref = (first.idref || '').toLowerCase();
+              const isCover =
+                href.includes('cover') ||
+                href.includes('wrap') ||
+                idref.includes('cover') ||
+                idref.includes('wrap') ||
+                first.linear === false ||
+                first.linear === 'no';
+
+              if (isCover && items[1]?.href) {
+                startTarget = items[1].href;
+              }
+            }
+          } catch (e) {
+            console.warn('Could not inspect spine for cover bypass:', e);
+          }
+        }
 
         await rendition.display(startTarget);
         if (isCancelled) return;
@@ -364,7 +486,14 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         // Generate location index in background for precise percentage
         book.ready.then(() => {
           if (!isCancelled) {
-            book.locations.generate(1000).catch(() => {});
+            book.locations.generate(1000).then(() => {
+              if (!isCancelled && renditionRef.current) {
+                const currentLoc = renditionRef.current.currentLocation() as unknown as Location;
+                if (currentLoc && currentLoc.start) {
+                  callbacksRef.current.handleRelocated(currentLoc);
+                }
+              }
+            }).catch(() => {});
           }
         });
       } catch (err: unknown) {
@@ -484,6 +613,32 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
                 'linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.06))',
             }}
           />
+        )}
+
+        {/* Stage-Anchored Left Navigation Button */}
+        {!isLoadingBook && !loadError && (
+          <button
+            type="button"
+            onClick={handlePrev}
+            className="hidden md:flex absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 p-2.5 sm:p-3 rounded-full bg-neutral-900/60 hover:bg-neutral-900/90 text-amber-200 border border-neutral-700/60 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
+            title="Previous Page (Left Arrow)"
+            aria-label="Previous Page"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Stage-Anchored Right Navigation Button */}
+        {!isLoadingBook && !loadError && (
+          <button
+            type="button"
+            onClick={handleNext}
+            className="hidden md:flex absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 p-2.5 sm:p-3 rounded-full bg-neutral-900/60 hover:bg-neutral-900/90 text-amber-200 border border-neutral-700/60 backdrop-blur-md shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
+            title="Next Page (Right Arrow / Space)"
+            aria-label="Next Page"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         )}
 
         {/* Invisible Click Margins for Quick Page Turns */}

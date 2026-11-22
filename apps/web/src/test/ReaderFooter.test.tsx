@@ -19,6 +19,22 @@ describe('ReaderFooter', () => {
     expect(screen.getByText('(12/120)')).toBeInTheDocument();
   });
 
+  it('hides page indicator when totalPages <= 2 to prevent misleading section page counts', () => {
+    render(
+      <ReaderFooter
+        percentage={0}
+        currentPage={1}
+        totalPages={2}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        theme="light"
+      />,
+    );
+
+    expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(screen.queryByText('(1/2)')).not.toBeInTheDocument();
+  });
+
   it('triggers onPrev and onNext callbacks', () => {
     const handlePrev = vi.fn();
     const handleNext = vi.fn();

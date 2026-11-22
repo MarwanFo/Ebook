@@ -84,7 +84,7 @@ export const ReaderFooter: React.FC<ReaderFooterProps> = ({
         {/* Progress Text / Page Count */}
         <div className="flex items-center gap-1.5 text-[11px] font-mono opacity-75 flex-shrink-0">
           <span>{clampedPercentage.toFixed(0)}%</span>
-          {currentPage && totalPages && (
+          {currentPage && totalPages && totalPages > 2 && (
             <span className="hidden md:inline opacity-60">
               ({currentPage}/{totalPages})
             </span>
