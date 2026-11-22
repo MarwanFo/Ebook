@@ -20,6 +20,7 @@ export interface FlipPageData {
   content?: string;
   canvasDataUrl?: string;
   title?: string;
+  chapterTitle?: string;
 }
 
 export interface FlipBookViewProps {
@@ -453,43 +454,120 @@ interface SoftPageProps {
   theme: 'light' | 'sepia' | 'dark';
   content?: string;
   title?: string;
+  chapterTitle?: string;
   isLeftPage?: boolean;
 }
 
 const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) => {
-  const { pageNumber, total, theme, content, title, isLeftPage = pageNumber % 2 === 0 } = props;
+  const {
+    pageNumber,
+    total,
+    theme,
+    content,
+    title,
+    chapterTitle,
+    isLeftPage = pageNumber % 2 === 0,
+  } = props;
 
-  const themeClasses = {
-    light: 'bg-[#faf8f5] text-neutral-800',
-    sepia: 'bg-[#fbf7ee] text-[#423321]',
-    dark: 'bg-[#1e1c1a] text-[#e7e5e4]',
+  const pageBgClass = {
+    light: 'bg-[#faf8f5]',
+    sepia: 'bg-[#fbf7ee]',
+    dark: 'bg-[#1e1c1a]',
+  }[theme];
+
+  const textClass = {
+    light: 'text-neutral-900',
+    sepia: 'text-[#423321]',
+    dark: 'text-[#e7e5e4]',
   }[theme];
 
   return (
     <div
       ref={ref}
-      className={`w-full h-full ${themeClasses} relative p-6 sm:p-10 flex flex-col justify-between overflow-hidden shadow-sm`}
+      className={`group w-full h-full ${pageBgClass} ${textClass} relative flex flex-col justify-between overflow-hidden select-none transition-colors duration-200`}
       style={{
         boxShadow: isLeftPage
-          ? 'inset -16px 0 24px -10px rgba(0,0,0,0.18)'
-          : 'inset 16px 0 24px -10px rgba(0,0,0,0.18)',
+          ? 'inset -22px 0 30px -10px rgba(0,0,0,0.24), inset -2px 0 6px rgba(0,0,0,0.10)'
+          : 'inset 22px 0 30px -10px rgba(0,0,0,0.24), inset 2px 0 6px rgba(0,0,0,0.10)',
       }}
     >
+      {/* 1. Realistic Page Cylindrical Curvature Lighting Overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none z-20"
+        style={{
+          background: isLeftPage
+            ? 'linear-gradient(to right, rgba(0,0,0,0.06) 0%, rgba(255,255,255,0.09) 25%, transparent 60%, rgba(0,0,0,0.22) 95%, rgba(0,0,0,0.45) 100%)'
+            : 'linear-gradient(to left, rgba(0,0,0,0.06) 0%, rgba(255,255,255,0.09) 25%, transparent 60%, rgba(0,0,0,0.22) 95%, rgba(0,0,0,0.45) 100%)',
+        }}
+      />
+
+      {/* 2. Micro Tactile Paper Texture Stippling */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-20 z-10 mix-blend-multiply"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.09) 1px, transparent 1px)',
+          backgroundSize: '4px 4px',
+        }}
+      />
+
+      {/* 3. Outer Fore-edge Paper Trim Shadow & Bevel */}
+      <div
+        className={`absolute top-0 bottom-0 pointer-events-none z-20 ${
+          isLeftPage
+            ? 'left-0 w-2.5 bg-gradient-to-r from-black/12 to-transparent border-r border-black/5'
+            : 'right-0 w-2.5 bg-gradient-to-l from-black/12 to-transparent border-l border-black/5'
+        }`}
+      />
+
+      {/* 4. Interactive Bottom Corner Lift Affordance */}
+      <div
+        className={`opacity-30 group-hover:opacity-90 transition-all duration-300 absolute bottom-0 pointer-events-none z-20 ${
+          isLeftPage ? 'left-0' : 'right-0'
+        }`}
+      >
+        <div
+          className={`w-12 h-12 transition-transform duration-300 group-hover:scale-110 ${
+            isLeftPage
+              ? 'bg-gradient-to-tr from-black/30 via-black/10 to-transparent'
+              : 'bg-gradient-to-tl from-black/30 via-black/10 to-transparent'
+          }`}
+          style={{
+            clipPath: isLeftPage
+              ? 'polygon(0 calc(100% - 28px), 28px 100%, 0 100%)'
+              : 'polygon(100% calc(100% - 28px), calc(100% - 28px) 100%, 100% 100%)',
+          }}
+        />
+      </div>
+
       {/* Running Book Header */}
-      <div className="flex items-center justify-between text-[11px] uppercase font-serif tracking-widest opacity-60 pb-3 border-b border-current/10">
+      <div
+        className={`flex items-center justify-between text-[10px] sm:text-[11px] uppercase font-serif tracking-widest opacity-60 pt-3 pb-2 border-b border-current/10 relative z-10 ${
+          isLeftPage ? 'pl-8 pr-4' : 'pl-4 pr-8'
+        }`}
+      >
         <span>{isLeftPage ? title || 'BookFlow' : ''}</span>
-        <span>{!isLeftPage ? `Page ${pageNumber}` : ''}</span>
+        <span className="truncate max-w-[200px]">
+          {!isLeftPage ? chapterTitle || `Page ${pageNumber}` : ''}
+        </span>
       </div>
 
       {/* Page Body Content */}
-      <div className="flex-1 my-4 flex items-center justify-center overflow-hidden">
+      <div
+        className={`flex-1 my-2 flex flex-col justify-start overflow-hidden relative z-10 ${
+          isLeftPage ? 'pl-8 pr-5 sm:pr-8' : 'pl-5 sm:pl-8 pr-8'
+        }`}
+      >
         {content ? (
           <div
-            className="prose prose-base font-serif leading-relaxed text-justify overflow-y-auto max-h-full px-4"
+            className="prose prose-xs sm:prose-sm md:prose-base font-serif leading-relaxed text-justify overflow-hidden max-h-full select-text"
+            style={{
+              textIndent: '1.25em',
+            }}
             dangerouslySetInnerHTML={{ __html: content }}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center opacity-40 font-serif space-y-3">
+          <div className="flex flex-col items-center justify-center opacity-40 font-serif space-y-3 m-auto">
             <BookOpen className="w-10 h-10" />
             <span className="text-sm italic">Page {pageNumber}</span>
           </div>
@@ -497,11 +575,15 @@ const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) =>
       </div>
 
       {/* Footer Page Number */}
-      <div className="flex items-center justify-between text-xs font-serif opacity-70 pt-3 border-t border-current/10">
+      <div
+        className={`flex items-center text-[10px] sm:text-xs font-serif opacity-60 pb-3 pt-2 border-t border-current/10 relative z-10 ${
+          isLeftPage ? 'pl-8 pr-4' : 'pl-4 pr-8'
+        }`}
+      >
         {isLeftPage ? (
-          <span>{pageNumber}</span>
+          <span className="font-mono">{pageNumber}</span>
         ) : (
-          <span className="ml-auto">
+          <span className="ml-auto font-mono">
             {pageNumber} of {total}
           </span>
         )}
@@ -899,6 +981,7 @@ export const FlipBookView: React.FC<FlipBookViewProps> = ({
           theme={theme}
           content={p.content}
           title={cleanTitle}
+          chapterTitle={p.chapterTitle}
           isLeftPage={isLeft}
         />,
       );

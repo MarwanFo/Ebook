@@ -1,17 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import ePubLibrary, { Book, Rendition, Location, NavItem } from 'epubjs';
 import { LocationType } from '@bookflow/shared-types';
-import {
-  Loader2,
-  AlertCircle,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Palette,
-  Bookmark,
-  Volume2,
-  VolumeX,
-} from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { booksApi } from '../../books/services/books-api';
 import { useReadingProgress } from '../hooks/useReadingProgress';
 import { useUpdateProgress } from '../hooks/useUpdateProgress';
@@ -22,6 +12,8 @@ import { ReaderTocSidebar } from './ReaderTocSidebar';
 import { ReaderSettingsModal } from './ReaderSettingsModal';
 import { BookmarksSidebar } from './BookmarksSidebar';
 import { useBookmarks } from '../hooks/useBookmarks';
+import { FlipBookView } from './FlipBookView';
+import { extractEpubPages, ExtractedEpubPage } from '../utils/epub-page-extractor';
 
 const ePub = (
   typeof ePubLibrary === 'function'
@@ -45,47 +37,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   const { theme, fontFamily, fontSize, lineHeight, layout, setLayout } = useReaderStore();
 
   // Desk Ambiance State for Mode Book (Matching FlipBookView)
-  const [deskMode, setDeskMode] = useState<'mahogany' | 'midnight' | 'oak' | 'minimal'>('mahogany');
-  const [ribbonVisible, setRibbonVisible] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  const deskThemes = {
-    mahogany: {
-      name: 'Mahogany Library',
-      bg: 'bg-[#1b110a]',
-      vignette:
-        'radial-gradient(ellipse at 50% 35%, rgba(255,220,165,0.22) 0%, rgba(43,24,13,0.65) 65%, rgba(12,6,2,0.98) 100%)',
-    },
-    midnight: {
-      name: 'Midnight Study',
-      bg: 'bg-[#090a0f]',
-      vignette:
-        'radial-gradient(ellipse at 50% 32%, rgba(140,170,225,0.18) 0%, rgba(14,16,24,0.7) 65%, rgba(4,5,8,0.99) 100%)',
-    },
-    oak: {
-      name: 'Warm Oak Desk',
-      bg: 'bg-[#2e1f13]',
-      vignette:
-        'radial-gradient(ellipse at 50% 32%, rgba(255,235,185,0.28) 0%, rgba(68,45,25,0.65) 65%, rgba(22,12,6,0.98) 100%)',
-    },
-    minimal: {
-      name: 'Parchment Studio',
-      bg: 'bg-[#e4dcce]',
-      vignette:
-        'radial-gradient(ellipse at 50% 35%, rgba(255,255,255,0.55) 0%, rgba(210,195,175,0.45) 65%, rgba(150,130,110,0.5) 100%)',
-    },
-  };
-
-  const cycleDeskMode = () => {
-    const modes: Array<'mahogany' | 'midnight' | 'oak' | 'minimal'> = [
-      'mahogany',
-      'midnight',
-      'oak',
-      'minimal',
-    ];
-    const nextIdx = (modes.indexOf(deskMode) + 1) % modes.length;
-    setDeskMode(modes[nextIdx] ?? 'mahogany');
-  };
+  const [soundEnabled] = useState(true);
 
   const playPageTurnSound = useCallback(() => {
     if (!soundEnabled) return;
@@ -141,6 +93,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   const [progressPercentage, setProgressPercentage] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number | undefined>(undefined);
   const [totalPages, setTotalPages] = useState<number | undefined>(undefined);
+
+  // 3D FlipBook Extracted Pages
+  const [epubPages, setEpubPages] = useState<ExtractedEpubPage[]>([]);
+  const [isExtractingPages, setIsExtractingPages] = useState(true);
 
   // Overlay Panels
   const [isTocOpen, setIsTocOpen] = useState(false);
@@ -390,12 +346,79 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
     }
   }, [playPageTurnSound]);
 
+  // FlipBook Page Navigation Handlers
+  const handleFlipPageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      if (epubPages.length > 0) {
+        const pct = Math.min(100, Math.max(0, Math.round((page / epubPages.length) * 100)));
+        setProgressPercentage(pct);
+
+        const activePageData = epubPages[page - 1];
+        if (activePageData?.chapterTitle) {
+          setCurrentChapter(activePageData.chapterTitle);
+        }
+
+        // Debounce saving progress to backend
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        saveTimeoutRef.current = setTimeout(() => {
+          updateProgressMutation.mutate({
+            locationType: LocationType.EPUB_CFI,
+            locationValue: activePageData?.href || String(page),
+            progressPercentage: pct,
+            currentPage: page,
+            totalPages: epubPages.length,
+            settings: {
+              theme,
+              fontFamily,
+              fontSize,
+              lineHeight,
+              layout,
+            },
+          });
+        }, 1500);
+      }
+    },
+    [epubPages, fontFamily, fontSize, layout, lineHeight, theme, updateProgressMutation],
+  );
+
+  const handleJumpToPage = useCallback(
+    (pageNum: number) => {
+      if (epubPages.length > 0) {
+        const target = Math.max(1, Math.min(epubPages.length, pageNum));
+        handleFlipPageChange(target);
+      }
+    },
+    [epubPages.length, handleFlipPageChange],
+  );
+
   // Jump to specific TOC href
-  const handleSelectChapter = useCallback((href: string) => {
-    if (renditionRef.current) {
-      renditionRef.current.display(href);
-    }
-  }, []);
+  const handleSelectChapter = useCallback(
+    (href: string) => {
+      if ((layout === 'book' || !layout) && epubPages.length > 0) {
+        const cleanTarget = href.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+        const foundIndex = epubPages.findIndex((p) => {
+          if (!p.href) return false;
+          const cleanPageHref = p.href.split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
+          return (
+            cleanPageHref === cleanTarget ||
+            cleanPageHref.endsWith(cleanTarget) ||
+            cleanTarget.endsWith(cleanPageHref)
+          );
+        });
+        if (foundIndex >= 0) {
+          handleFlipPageChange(foundIndex + 1);
+          return;
+        }
+      }
+      if (renditionRef.current) {
+        renditionRef.current.display(href);
+      }
+    },
+    [epubPages, handleFlipPageChange, layout],
+  );
 
   // Scrub to approximate percentage
   const handleSeekPercentage = useCallback((percentage: number) => {
@@ -469,6 +492,24 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         // Initialize EPUB Book
         const book = ePub(arrayBuffer);
         bookRef.current = book;
+
+        // Extract FlipBook pages asynchronously
+        extractEpubPages(book, bookTitle, author)
+          .then((extracted) => {
+            if (!isCancelled && extracted.length > 0) {
+              setEpubPages(extracted);
+              setTotalPages(extracted.length);
+              setIsExtractingPages(false);
+              const saved = callbacksRef.current.savedProgress;
+              if (saved?.currentPage && saved.currentPage >= 1) {
+                setCurrentPage(Math.min(extracted.length, saved.currentPage));
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn('FlipBook page extraction error:', err);
+            if (!isCancelled) setIsExtractingPages(false);
+          });
 
         // Extract Table of Contents
         book.loaded.navigation.then((nav) => {
@@ -642,23 +683,18 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         bookRef.current = null;
       }
     };
-  }, [bookId]); // Run once when bookId mounts
+  }, [author, bookId, bookTitle]);
 
   // Theme-aware Canvas Background
-  const activeDesk = deskThemes[deskMode];
   const isBookMode = layout === 'book' || layout === 'auto' || !layout;
 
   const canvasBgClass = isBookMode
-    ? `${activeDesk.bg} text-neutral-100`
+    ? 'bg-[#1b110a] text-neutral-100'
     : {
         light: 'bg-white text-neutral-900',
         sepia: 'bg-[#f5edd6] text-[#4a3b2c]',
         dark: 'bg-[#121110] text-[#e4e2dd]',
       }[theme];
-
-  const progressRatio = (progressPercentage || 0) / 100;
-  const leftStackWidth = Math.max(3, Math.min(18, Math.round(3 + progressRatio * 15)));
-  const rightStackWidth = Math.max(3, Math.min(18, Math.round(18 - progressRatio * 15)));
 
   return (
     <div className={`fixed inset-0 flex flex-col overflow-hidden select-none ${canvasBgClass}`}>
@@ -670,6 +706,9 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         theme={theme}
         layout={layout}
         onLayoutChange={setLayout}
+        currentPage={currentPage || 1}
+        totalPages={epubPages.length > 0 ? epubPages.length : totalPages}
+        onJumpToPage={handleJumpToPage}
         isTocOpen={isTocOpen}
         onToggleToc={() => {
           setIsTocOpen(!isTocOpen);
@@ -695,58 +734,6 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
 
       {/* Main Reading Stage */}
       <main className="relative flex-1 w-full overflow-hidden flex items-center justify-center">
-        {/* Ambient Reading Lamp Vignette Lighting over the Desk (Book Mode) */}
-        {isBookMode && (
-          <div
-            className="absolute inset-0 pointer-events-none z-0 transition-opacity duration-500"
-            style={{
-              backgroundImage: activeDesk.vignette,
-            }}
-          />
-        )}
-
-        {/* Floating Mini-Bar in Book Mode */}
-        {isBookMode && (
-          <div className="absolute top-3 right-4 sm:right-8 z-40 flex items-center gap-1.5 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-amber-900/40 text-amber-200 shadow-xl">
-            {/* Cycle Desk Texture */}
-            <button
-              type="button"
-              onClick={cycleDeskMode}
-              className="px-2.5 py-1 rounded-full text-xs font-serif flex items-center gap-1.5 hover:bg-white/10 transition-colors cursor-pointer"
-              title="Change Reading Desk Ambiance"
-            >
-              <Palette className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">{activeDesk.name}</span>
-            </button>
-            {/* Toggle Silk Bookmark Ribbon */}
-            <button
-              type="button"
-              onClick={() => setRibbonVisible(!ribbonVisible)}
-              className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                ribbonVisible ? 'text-rose-400 bg-white/10' : 'text-neutral-400 hover:text-white'
-              }`}
-              title="Toggle Silk Bookmark Ribbon"
-              aria-label="Toggle Silk Bookmark Ribbon"
-            >
-              <Bookmark className="w-3.5 h-3.5" />
-            </button>
-            {/* Toggle Realistic Page Flip Audio */}
-            <button
-              type="button"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-              title={soundEnabled ? 'Mute Page Turn Sound' : 'Enable Page Turn Sound'}
-              aria-label="Toggle Page Turn Sound"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-3.5 h-3.5" />
-              ) : (
-                <VolumeX className="w-3.5 h-3.5 opacity-60" />
-              )}
-            </button>
-          </div>
-        )}
-
         {/* Loading Spinner */}
         {(isLoadingBook || isProgressLoading) && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-inherit backdrop-blur-xs">
@@ -772,166 +759,55 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           </div>
         )}
 
-        {/* Reading Stage Content: 3D Hardcover Book or Flat Canvas */}
-        {isBookMode ? (
-          <div
-            className="relative flex items-center justify-center transition-all duration-300 z-10 w-full max-w-6xl h-[88vh] max-h-[860px] mx-auto px-4 sm:px-8 py-2"
-            style={{
-              filter:
-                'drop-shadow(0 32px 48px rgba(0, 0, 0, 0.6)) drop-shadow(0 14px 20px rgba(0, 0, 0, 0.4))',
-            }}
-          >
-            {/* 1. Outer Hardcover Casing Boards */}
-            <div
-              className="absolute pointer-events-none z-0 rounded-lg border border-amber-950/70 transition-all duration-300"
-              style={{
-                top: '-8px',
-                bottom: '-8px',
-                left: `-${leftStackWidth + 6}px`,
-                right: `-${rightStackWidth + 6}px`,
-                background:
-                  'linear-gradient(135deg, #2b180d 0%, #3d2415 35%, #221208 70%, #150a04 100%)',
-                boxShadow:
-                  'inset 0 1px 2px rgba(255,255,255,0.18), inset 0 -3px 6px rgba(0,0,0,0.9), 0 16px 36px rgba(0,0,0,0.7)',
-              }}
-            >
-              {/* Subtle Gilded Blind-Stamp Border on Leather Casing */}
-              <div className="absolute inset-1.5 border border-amber-500/25 rounded-md pointer-events-none" />
-
-              {/* 4 Antique Brass Corner Protectors */}
-              <div className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-amber-400/50 rounded-tl-sm pointer-events-none bg-gradient-to-br from-amber-300/25 to-transparent" />
-              <div className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-amber-400/50 rounded-tr-sm pointer-events-none bg-gradient-to-bl from-amber-300/25 to-transparent" />
-              <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-amber-400/50 rounded-bl-sm pointer-events-none bg-gradient-to-tr from-amber-300/25 to-transparent" />
-              <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-amber-400/50 rounded-br-sm pointer-events-none bg-gradient-to-tl from-amber-300/25 to-transparent" />
-            </div>
-
-            {/* 2. Left Page-Block Depth (Layered paper edge leaves on left) */}
-            <div
-              className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-l-xs transition-all duration-300 hidden md:block"
-              style={{
-                left: `-${leftStackWidth}px`,
-                width: `${leftStackWidth}px`,
-                background:
-                  'repeating-linear-gradient(to right, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-                boxShadow: 'inset 2px 0 3px rgba(0,0,0,0.35), -2px 0 4px rgba(0,0,0,0.25)',
-              }}
-            />
-
-            {/* 3. Right Page-Block Depth (Layered paper edge leaves on right) */}
-            <div
-              className="absolute top-1.5 bottom-1.5 pointer-events-none z-0 rounded-r-xs transition-all duration-300 hidden md:block"
-              style={{
-                right: `-${rightStackWidth}px`,
-                width: `${rightStackWidth}px`,
-                background:
-                  'repeating-linear-gradient(to left, #ece3cf 0px, #e2d6be 1px, #f5ecd8 2px, #ddd0b5 3px)',
-                boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.35), 2px 0 4px rgba(0,0,0,0.25)',
-              }}
-            />
-
-            {/* 4. Bottom Page-Block Ledge */}
-            <div
-              className="absolute left-1 right-1 -bottom-2 sm:-bottom-2.5 h-2.5 pointer-events-none z-0 rounded-b-xs"
-              style={{
-                background:
-                  'repeating-linear-gradient(to bottom, #ded2b9 0px, #ede2cb 1px, #d5c8ad 2px)',
-                boxShadow: '0 3px 6px rgba(0,0,0,0.4)',
-              }}
-            />
-
-            {/* 5. Top & Bottom Woven Silk Headbands */}
-            <div
-              className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-t-xs pointer-events-none z-30 hidden md:block"
-              style={{
-                background:
-                  'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-                boxShadow: '0 -1px 3px rgba(0,0,0,0.5)',
-              }}
-            />
-            <div
-              className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-10 h-2.5 rounded-b-xs pointer-events-none z-30 hidden md:block"
-              style={{
-                background:
-                  'repeating-linear-gradient(90deg, #8b1e28 0px, #8b1e28 3px, #e2a84b 3px, #e2a84b 6px)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
-              }}
-            />
-
-            {/* 6. Hanging Red Silk Bookmark Ribbon */}
-            {ribbonVisible && (
-              <div
-                className="absolute top-0 bottom-[-18px] sm:bottom-[-26px] left-1/2 -translate-x-1/2 w-2 sm:w-2.5 pointer-events-none z-40 transition-all duration-300"
-                style={{
-                  background: 'linear-gradient(to right, #7f1d1d, #dc2626 50%, #991b1b)',
-                  filter: 'drop-shadow(2px 3px 4px rgba(0,0,0,0.45))',
-                }}
-              >
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-3"
-                  style={{
-                    background: 'inherit',
-                    clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 60%, 0 100%)',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* 7. Center Book Spine Crease & Groove Shadow */}
-            <div
-              className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none z-20 hidden md:block"
-              style={{
-                background:
-                  'linear-gradient(to right, rgba(0,0,0,0.08), rgba(0,0,0,0.28) 50%, rgba(0,0,0,0.08))',
-              }}
-            />
-
-            {/* 8. Cylindrical Curvature Overlays */}
-            <div
-              className="absolute top-0 bottom-0 left-0 right-1/2 pointer-events-none z-10 hidden md:block"
-              style={{
-                background:
-                  'linear-gradient(to right, rgba(0,0,0,0.05) 0%, rgba(255,255,255,0.08) 25%, transparent 60%, rgba(0,0,0,0.18) 95%, rgba(0,0,0,0.35) 100%)',
-              }}
-            />
-            <div
-              className="absolute top-0 bottom-0 left-1/2 right-0 pointer-events-none z-10 hidden md:block"
-              style={{
-                background:
-                  'linear-gradient(to left, rgba(0,0,0,0.05) 0%, rgba(255,255,255,0.08) 25%, transparent 60%, rgba(0,0,0,0.18) 95%, rgba(0,0,0,0.35) 100%)',
-              }}
-            />
-
-            {/* 9. Render Canvas Container (Book Paper Surface) */}
-            <div
-              ref={viewerRef}
-              className="w-full h-full relative overflow-hidden rounded-xs bg-[#faf8f5] shadow-inner"
-              style={{ minHeight: '100%' }}
+        {/* 1. Real 3D FlipBook View (Mode Book) */}
+        {isBookMode && epubPages.length > 0 && !loadError && (
+          <div className="w-full h-full p-0 overflow-hidden">
+            <FlipBookView
+              title={bookTitle}
+              author={author}
+              totalPages={epubPages.length}
+              pages={epubPages}
+              currentPage={currentPage || 1}
+              onPageChange={handleFlipPageChange}
+              theme={theme}
             />
           </div>
-        ) : (
-          <>
-            {/* Standard Clean EPUB Render Canvas Container */}
-            <div
-              ref={viewerRef}
-              className="w-full h-full max-w-6xl mx-auto relative px-2 sm:px-6 md:px-12 py-2"
-              style={{ minHeight: '100%' }}
-            />
-
-            {/* Center Book Spine Divider Shadow (for two-page spread authenticity) */}
-            {layout !== 'single-page' && (
-              <div
-                className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none opacity-20 hidden md:block"
-                style={{
-                  background:
-                    'linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.06))',
-                }}
-              />
-            )}
-          </>
         )}
 
-        {/* Stage-Anchored Left Navigation Button */}
-        {!isLoadingBook && !loadError && (
+        {/* 3D Mode Book Extracting Fallback */}
+        {isBookMode && isExtractingPages && !loadError && !isLoadingBook && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-inherit backdrop-blur-xs">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-600 mb-3" />
+            <p className="text-xs font-serif italic text-amber-900/80 dark:text-amber-200/80">
+              Opening book in 3D Mode...
+            </p>
+          </div>
+        )}
+
+        {/* 2. Standard EPUB Render Canvas Container (Two-Page / Single Page) */}
+        <div
+          ref={viewerRef}
+          className={
+            isBookMode
+              ? 'hidden'
+              : 'w-full h-full max-w-6xl mx-auto relative px-2 sm:px-6 md:px-12 py-2'
+          }
+          style={{ minHeight: '100%' }}
+        />
+
+        {/* Center Book Spine Divider Shadow (for two-page spread authenticity in standard mode) */}
+        {!isBookMode && layout !== 'single-page' && (
+          <div
+            className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 pointer-events-none opacity-20 hidden md:block"
+            style={{
+              background:
+                'linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.06))',
+            }}
+          />
+        )}
+
+        {/* Stage-Anchored Left Navigation Button (Standard Mode) */}
+        {!isBookMode && !isLoadingBook && !loadError && (
           <button
             type="button"
             onClick={handlePrev}
@@ -943,8 +819,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           </button>
         )}
 
-        {/* Stage-Anchored Right Navigation Button */}
-        {!isLoadingBook && !loadError && (
+        {/* Stage-Anchored Right Navigation Button (Standard Mode) */}
+        {!isBookMode && !isLoadingBook && !loadError && (
           <button
             type="button"
             onClick={handleNext}
@@ -956,8 +832,8 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           </button>
         )}
 
-        {/* Invisible Click Margins for Quick Page Turns */}
-        {!isLoadingBook && !loadError && (
+        {/* Invisible Click Margins for Quick Page Turns (Standard Mode) */}
+        {!isBookMode && !isLoadingBook && !loadError && (
           <>
             <div
               onClick={handlePrev}
@@ -978,10 +854,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
       {/* Bottom Footer Control Bar */}
       <ReaderFooter
         percentage={progressPercentage}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPrev={handlePrev}
-        onNext={handleNext}
+        currentPage={currentPage || 1}
+        totalPages={epubPages.length > 0 ? epubPages.length : totalPages}
+        onPrev={
+          isBookMode ? () => handleJumpToPage(Math.max(1, (currentPage || 1) - 1)) : handlePrev
+        }
+        onNext={isBookMode ? () => handleJumpToPage((currentPage || 1) + 1) : handleNext}
         onSeekPercentage={handleSeekPercentage}
         theme={theme}
       />

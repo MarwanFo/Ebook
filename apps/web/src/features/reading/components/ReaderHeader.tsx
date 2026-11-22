@@ -20,6 +20,9 @@ interface ReaderHeaderProps {
   theme: ReaderTheme;
   layout?: ReaderLayout;
   onLayoutChange?: (layout: ReaderLayout) => void;
+  currentPage?: number;
+  totalPages?: number;
+  onJumpToPage?: (page: number) => void;
   isTocOpen: boolean;
   onToggleToc: () => void;
   isBookmarksOpen?: boolean;
@@ -38,6 +41,9 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   theme,
   layout,
   onLayoutChange,
+  currentPage,
+  totalPages,
+  onJumpToPage,
   isTocOpen,
   onToggleToc,
   isBookmarksOpen = false,
@@ -49,6 +55,23 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   onToggleFullscreen,
 }) => {
   const navigate = useNavigate();
+  const [pageInput, setPageInput] = React.useState<string>(String(currentPage || 1));
+
+  React.useEffect(() => {
+    if (currentPage !== undefined) {
+      setPageInput(String(currentPage));
+    }
+  }, [currentPage]);
+
+  const handlePageSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pageNum = parseInt(pageInput, 10);
+    if (!isNaN(pageNum) && totalPages && pageNum >= 1 && pageNum <= totalPages) {
+      onJumpToPage?.(pageNum);
+    } else if (currentPage !== undefined) {
+      setPageInput(String(currentPage));
+    }
+  };
 
   // Dynamic theme-aware header styles
   const headerThemeClasses = {
@@ -102,6 +125,24 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Center Section: Page Jump Navigation */}
+      {totalPages && totalPages > 0 ? (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <form onSubmit={handlePageSubmit} className="flex items-center gap-1">
+            <input
+              type="text"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={handlePageSubmit}
+              className="w-10 sm:w-12 text-center py-1 text-xs border rounded-md bg-transparent border-current/20 font-mono font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+              title="Current page (press Enter to jump)"
+              aria-label="Current page"
+            />
+            <span className="text-xs opacity-60 font-mono">/ {totalPages}</span>
+          </form>
+        </div>
+      ) : null}
 
       {/* Right Section: Action Controls */}
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
