@@ -3,6 +3,9 @@ import {
   BookQueryDto,
   BookSummaryDto,
   BookUploadResponseDto,
+  ExploreBooksQueryDto,
+  ExploreBooksResponseDto,
+  ImportPublicBookDto,
   PaginatedResponse,
   UpdateBookDto,
 } from '@bookflow/shared-types';
@@ -59,6 +62,26 @@ export const booksApi = {
   async deleteBook(id: string): Promise<void> {
     return request<void>(`/books/${id}`, {
       method: 'DELETE',
+    });
+  },
+
+  async exploreBooks(query: ExploreBooksQueryDto = {}): Promise<ExploreBooksResponseDto> {
+    const params = new URLSearchParams();
+    if (query.page) params.append('page', String(query.page));
+    if (query.search) params.append('search', query.search);
+    if (query.topic) params.append('topic', query.topic);
+
+    const qs = params.toString();
+    const endpoint = qs ? `/books/explore?${qs}` : '/books/explore';
+    return request<ExploreBooksResponseDto>(endpoint, {
+      method: 'GET',
+    });
+  },
+
+  async importPublicBook(dto: ImportPublicBookDto): Promise<BookUploadResponseDto> {
+    return request<BookUploadResponseDto>('/books/import-public', {
+      method: 'POST',
+      body: JSON.stringify(dto),
     });
   },
 

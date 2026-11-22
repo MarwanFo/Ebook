@@ -241,6 +241,7 @@ export const HomePage: React.FC = () => {
           filters={filters}
           onFilterChange={handleFilterChange}
           onUploadClick={() => setIsUploadOpen(true)}
+          onExploreClick={() => navigate('/explore')}
         />
 
         {/* Books Grid (Preserved 100% with RealisticBookCover) */}

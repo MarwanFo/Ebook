@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Library, Settings, LogIn, UserPlus, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Library, Compass, Settings, LogIn, UserPlus, Sparkles } from 'lucide-react';
 import { useUIStore } from '../../stores/ui-store';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
@@ -11,11 +11,13 @@ export const Sidebar: React.FC = () => {
 
   const authNavItems = [
     { label: 'Library Catalog', path: '/', icon: Library },
+    { label: 'Explore Books', path: '/explore', icon: Compass },
     { label: 'Account Settings', path: '/profile', icon: Settings },
   ];
 
   const guestNavItems = [
     { label: 'Overview', path: '/', icon: LayoutDashboard },
+    { label: 'Explore Books', path: '/explore', icon: Compass },
     { label: 'Sign In', path: '/login', icon: LogIn },
     { label: 'Create Account', path: '/register', icon: UserPlus },
   ];

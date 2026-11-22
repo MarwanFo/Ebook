@@ -1,16 +1,19 @@
 import React from 'react';
+import { Compass } from 'lucide-react';
 import { BookFormat, BookQueryDto, BookStatus } from '@bookflow/shared-types';
 
 interface LibraryFiltersProps {
   filters: BookQueryDto;
   onFilterChange: (updated: Partial<BookQueryDto>) => void;
   onUploadClick: () => void;
+  onExploreClick?: () => void;
 }
 
 export const LibraryFilters: React.FC<LibraryFiltersProps> = ({
   filters,
   onFilterChange,
   onUploadClick,
+  onExploreClick,
 }) => {
   return (
     <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
@@ -92,6 +95,18 @@ export const LibraryFilters: React.FC<LibraryFiltersProps> = ({
           <option value={BookStatus.READING}>Reading</option>
           <option value={BookStatus.COMPLETED}>Completed</option>
         </select>
+
+        {/* Explore Public Catalog Button */}
+        {onExploreClick && (
+          <button
+            type="button"
+            onClick={onExploreClick}
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-border bg-surface text-text hover:bg-surface-muted rounded-lg text-sm font-medium shadow-xs transition-colors"
+          >
+            <Compass className="w-4 h-4 text-primary" />
+            <span>Explore Catalog</span>
+          </button>
+        )}
 
         {/* Upload Button */}
         <button

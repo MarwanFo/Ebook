@@ -10,12 +10,16 @@ import {
   BookStatus,
   BookSummaryDto,
   BookUploadResponseDto,
+  ExploreBooksResponseDto,
   PaginatedResponse,
+  PublicBookDto,
 } from '@bookflow/shared-types';
 import { PrismaService } from '../database/prisma.service';
 import { STORAGE_SERVICE, StorageService } from '../storage/storage.interface';
 import { BookQueryDto } from './dto/book-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import { ExploreBooksQueryDto } from './dto/explore-books-query.dto';
+import { ImportPublicBookDto } from './dto/import-public-book.dto';
 import { EpubParserService } from './parsers/epub-parser.service';
 import { PdfParserService } from './parsers/pdf-parser.service';
 import { validateBookBuffer } from './utils/book-validator';
@@ -401,6 +405,386 @@ export class BooksService {
 
     const stream = await this.storageService.getFileStream(book.coverStorageKey);
     return { stream, mimeType };
+  }
+
+  async explorePublicBooks(query: ExploreBooksQueryDto): Promise<ExploreBooksResponseDto> {
+    const CURATED_CLASSICS: PublicBookDto[] = [
+      {
+        id: 1342,
+        title: 'Pride and Prejudice',
+        authors: ['Jane Austen'],
+        subjects: ['Classic Literature', 'Romance', 'British Fiction'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/1342/pg1342-images.epub',
+        downloadCount: 208430,
+      },
+      {
+        id: 84,
+        title: 'Frankenstein; Or, The Modern Prometheus',
+        authors: ['Mary Wollstonecraft Shelley'],
+        subjects: ['Gothic Fiction', 'Science Fiction', 'Horror'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/84/pg84.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/84/pg84-images.epub',
+        downloadCount: 142100,
+      },
+      {
+        id: 1661,
+        title: 'The Adventures of Sherlock Holmes',
+        authors: ['Arthur Conan Doyle'],
+        subjects: ['Mystery', 'Detective Stories', 'Classic'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/1661/pg1661.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/1661/pg1661-images.epub',
+        downloadCount: 104500,
+      },
+      {
+        id: 345,
+        title: 'Dracula',
+        authors: ['Bram Stoker'],
+        subjects: ['Vampires', 'Gothic Fiction', 'Horror'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/345/pg345.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/345/pg345-images.epub',
+        downloadCount: 96800,
+      },
+      {
+        id: 174,
+        title: 'The Picture of Dorian Gray',
+        authors: ['Oscar Wilde'],
+        subjects: ['Philosophical Fiction', 'Gothic', 'Morality'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/174/pg174.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/174/pg174-images.epub',
+        downloadCount: 88200,
+      },
+      {
+        id: 2701,
+        title: 'Moby Dick; Or, The Whale',
+        authors: ['Herman Melville'],
+        subjects: ['Adventure', 'Sea Stories', 'Classic'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/2701/pg2701.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/2701/pg2701-images.epub',
+        downloadCount: 81400,
+      },
+      {
+        id: 98,
+        title: 'A Tale of Two Cities',
+        authors: ['Charles Dickens'],
+        subjects: ['Historical Fiction', 'French Revolution', 'Classic'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/98/pg98.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/98/pg98-images.epub',
+        downloadCount: 78500,
+      },
+      {
+        id: 11,
+        title: "Alice's Adventures in Wonderland",
+        authors: ['Lewis Carroll'],
+        subjects: ['Fantasy', "Children's Literature", 'Nonsense Fiction'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/11/pg11.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/11/pg11-images.epub',
+        downloadCount: 76300,
+      },
+      {
+        id: 35,
+        title: 'The Time Machine',
+        authors: ['H. G. Wells'],
+        subjects: ['Science Fiction', 'Time Travel', 'Dystopia'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/35/pg35.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/35/pg35-images.epub',
+        downloadCount: 69200,
+      },
+      {
+        id: 5200,
+        title: 'Metamorphosis',
+        authors: ['Franz Kafka'],
+        subjects: ['Psychological Fiction', 'Absurdist', 'Classic'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/5200/pg5200.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/5200/pg5200-images.epub',
+        downloadCount: 65100,
+      },
+      {
+        id: 2591,
+        title: "Grimms' Fairy Tales",
+        authors: ['Jacob Grimm', 'Wilhelm Grimm'],
+        subjects: ['Folklore', 'Fairy Tales', 'Mythology'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/2591/pg2591.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/2591/pg2591-images.epub',
+        downloadCount: 62400,
+      },
+      {
+        id: 74,
+        title: 'The Adventures of Tom Sawyer',
+        authors: ['Mark Twain'],
+        subjects: ['Adventure', 'Humorous Fiction', 'American Classics'],
+        languages: ['en'],
+        coverUrl: 'https://gutenberg.pglaf.org/cache/epub/74/pg74.cover.medium.jpg',
+        downloadUrl: 'https://gutenberg.pglaf.org/cache/epub/74/pg74-images.epub',
+        downloadCount: 59300,
+      },
+    ];
+
+    try {
+      const params = new URLSearchParams();
+      if (query.page) params.append('page', String(query.page));
+      if (query.search) params.append('search', query.search);
+      if (query.topic) params.append('topic', query.topic);
+      params.append('languages', 'en');
+
+      const gutendexUrl = `https://gutendex.com/books?${params.toString()}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(gutendexUrl, {
+        headers: {
+          'User-Agent': 'BookFlow-EbookReader/1.0',
+        },
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+
+      if (!res.ok) {
+        throw new Error(`Gutendex responded with ${res.status}`);
+      }
+
+      const data = (await res.json()) as {
+        count?: number;
+        next?: string | null;
+        previous?: string | null;
+        results?: Array<{
+          id: number;
+          title: string;
+          authors?: Array<{ name?: string }>;
+          subjects?: string[];
+          languages?: string[];
+          formats: Record<string, string>;
+          download_count?: number;
+        }>;
+      };
+
+      const results: PublicBookDto[] = [];
+      for (const b of data.results || []) {
+        // Find epub format
+        const hasEpub =
+          b.formats['application/epub+zip'] ||
+          b.formats['application/octet-stream'] ||
+          null;
+
+        if (!hasEpub) continue;
+
+        // Ensure downloadUrl and coverUrl point to the pglaf mirror to bypass 503 bot blocks
+        const downloadUrl = `https://gutenberg.pglaf.org/cache/epub/${b.id}/pg${b.id}-images.epub`;
+        const coverUrl = b.formats['image/jpeg']
+          ? `https://gutenberg.pglaf.org/cache/epub/${b.id}/pg${b.id}.cover.medium.jpg`
+          : null;
+
+        const authorNames = Array.isArray(b.authors)
+          ? b.authors
+              .map((a) => {
+                if (!a.name) return '';
+                const parts = a.name.split(',').map((p) => p.trim());
+                return parts.length === 2 ? `${parts[1]} ${parts[0]}` : a.name;
+              })
+              .filter(Boolean)
+          : [];
+
+        results.push({
+          id: b.id,
+          title: b.title,
+          authors: authorNames,
+          subjects: Array.isArray(b.subjects) ? b.subjects.slice(0, 4) : [],
+          languages: b.languages || ['en'],
+          coverUrl,
+          downloadUrl,
+          downloadCount: b.download_count || 0,
+        });
+      }
+
+      let nextPage: number | null = null;
+      let previousPage: number | null = null;
+      if (data.next) {
+        const match = data.next.match(/page=(\d+)/);
+        nextPage = match ? parseInt(match[1], 10) : (query.page || 1) + 1;
+      }
+      if (data.previous) {
+        const match = data.previous.match(/page=(\d+)/);
+        previousPage = match ? parseInt(match[1], 10) : Math.max(1, (query.page || 1) - 1);
+      }
+
+      return {
+        count: data.count || results.length,
+        nextPage,
+        previousPage,
+        results: results.length > 0 ? results : CURATED_CLASSICS,
+      };
+    } catch (error) {
+      this.logger.warn(`Gutendex fetch failed or timed out: ${(error as Error).message}. Returning curated collection.`);
+      
+      // Filter curated classics if search or topic is present
+      let filtered = CURATED_CLASSICS;
+      if (query.search) {
+        const s = query.search.toLowerCase();
+        filtered = filtered.filter(
+          (b) =>
+            b.title.toLowerCase().includes(s) ||
+            b.authors.some((a) => a.toLowerCase().includes(s)) ||
+            b.subjects.some((sub) => sub.toLowerCase().includes(s)),
+        );
+      }
+      if (query.topic) {
+        const t = query.topic.toLowerCase();
+        filtered = filtered.filter((b) =>
+          b.subjects.some((sub) => sub.toLowerCase().includes(t)),
+        );
+      }
+
+      return {
+        count: filtered.length,
+        nextPage: null,
+        previousPage: null,
+        results: filtered,
+      };
+    }
+  }
+
+  async importPublicBook(userId: string, dto: ImportPublicBookDto): Promise<BookUploadResponseDto> {
+    this.logger.log(`User ${userId} importing public book: "${dto.title}" (Gutenberg ID: ${dto.gutenbergId})`);
+
+    // 1. Fetch the EPUB file from downloadUrl
+    let fileBuffer: Buffer;
+    try {
+      const res = await fetch(dto.downloadUrl, {
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'BookFlow-EbookReader/1.0',
+        },
+      });
+
+      if (!res.ok) {
+        // Fallback to non-images epub
+        const fallbackUrl = `https://gutenberg.pglaf.org/cache/epub/${dto.gutenbergId}/pg${dto.gutenbergId}.epub`;
+        const fallbackRes = await fetch(fallbackUrl, {
+          redirect: 'follow',
+          headers: { 'User-Agent': 'BookFlow-EbookReader/1.0' },
+        });
+        if (!fallbackRes.ok) {
+          throw new BadRequestException(`Failed to download book from repository (HTTP ${res.status})`);
+        }
+        fileBuffer = Buffer.from(await fallbackRes.arrayBuffer());
+      } else {
+        fileBuffer = Buffer.from(await res.arrayBuffer());
+      }
+    } catch (err) {
+      throw new BadRequestException(`Failed to download book file: ${(err as Error).message}`);
+    }
+
+    // 2. Validate the file buffer
+    const validated = validateBookBuffer(fileBuffer, this.maxFileSizeBytes);
+
+    // 3. Parse EPUB metadata
+    const cleanTitle = dto.title.replace(/\s+/g, ' ').trim();
+    const epubResult = await this.epubParser.parse(fileBuffer, cleanTitle);
+
+    let coverBuffer: Buffer | null = null;
+    let coverExtension = 'jpg';
+
+    if (epubResult.cover) {
+      coverBuffer = epubResult.cover.buffer;
+      coverExtension = epubResult.cover.extension;
+    } else if (dto.coverUrl) {
+      try {
+        const coverRes = await fetch(dto.coverUrl, {
+          redirect: 'follow',
+          headers: { 'User-Agent': 'BookFlow-EbookReader/1.0' },
+        });
+        if (coverRes.ok) {
+          coverBuffer = Buffer.from(await coverRes.arrayBuffer());
+          coverExtension = 'jpg';
+        }
+      } catch {
+        // safe fallback if cover fetch fails
+      }
+    }
+
+    // 4. Save physical files using StorageService
+    const fileId = uuidv4();
+    const bookSubDir = `books/${userId}`;
+    const bookFilename = `${fileId}.${validated.format.toLowerCase()}`;
+    const bookStorageKey = await this.storageService.saveFile(
+      bookSubDir,
+      bookFilename,
+      fileBuffer,
+    );
+
+    let coverStorageKey: string | null = null;
+    if (coverBuffer) {
+      const coverSubDir = `covers/${userId}`;
+      const coverFilename = `${fileId}.${coverExtension}`;
+      coverStorageKey = await this.storageService.saveFile(coverSubDir, coverFilename, coverBuffer);
+    }
+
+    // 5. Transactionally create Book and BookFile
+    const author = dto.author || epubResult.metadata.author || null;
+    const description = dto.description || epubResult.metadata.description || null;
+
+    try {
+      const { book, bookFile } = await this.prisma.$transaction(async (tx) => {
+        const createdBook = await tx.book.create({
+          data: {
+            ownerId: userId,
+            title: cleanTitle,
+            author,
+            description,
+            language: epubResult.metadata.language || 'en',
+            publisher: epubResult.metadata.publisher || 'Project Gutenberg',
+            publishedAt: epubResult.metadata.publishedAt,
+            format: validated.format as unknown as PrismaBookFormat,
+            coverStorageKey,
+          },
+        });
+
+        const createdFile = await tx.bookFile.create({
+          data: {
+            bookId: createdBook.id,
+            storageKey: bookStorageKey,
+            originalFilename: `${cleanTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.epub`,
+            mimeType: validated.mimeType,
+            sizeBytes: BigInt(validated.sizeBytes),
+            checksum: validated.checksum,
+          },
+        });
+
+        return { book: createdBook, bookFile: createdFile };
+      });
+
+      return {
+        book: this.mapToDetailDto(book, bookFile),
+        extractedMetadata: {
+          title: cleanTitle,
+          author,
+          description,
+          language: epubResult.metadata.language || 'en',
+          publisher: 'Project Gutenberg',
+          publishedAt: epubResult.metadata.publishedAt?.toISOString() || null,
+          isbn: null,
+          pageCount: null,
+          hasCover: Boolean(coverStorageKey),
+        },
+      };
+    } catch (err) {
+      await this.storageService.deleteFile(bookStorageKey);
+      if (coverStorageKey) {
+        await this.storageService.deleteFile(coverStorageKey);
+      }
+      this.logger.error(`Failed to save imported book: ${(err as Error).message}`);
+      throw err;
+    }
   }
 
   private mapToSummaryDto(book: Book): BookSummaryDto {

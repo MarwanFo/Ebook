@@ -23,14 +23,18 @@ import {
   BookDetailDto,
   BookSummaryDto,
   BookUploadResponseDto,
+  ExploreBooksResponseDto,
   PaginatedResponse,
 } from '@bookflow/shared-types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BypassTransform } from '../common/decorators/bypass-transform.decorator';
 import { BooksService } from './books.service';
 import { BookQueryDto } from './dto/book-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import { ExploreBooksQueryDto } from './dto/explore-books-query.dto';
+import { ImportPublicBookDto } from './dto/import-public-book.dto';
 
 @ApiTags('Books')
 @ApiBearerAuth()
@@ -57,6 +61,24 @@ export class BooksController {
     @Query() query: BookQueryDto,
   ): Promise<PaginatedResponse<BookSummaryDto>> {
     return this.booksService.findAll(userId, query);
+  }
+
+  @Public()
+  @Get('explore')
+  @ApiOperation({ summary: 'Explore and search public domain classics' })
+  async explore(
+    @Query() query: ExploreBooksQueryDto,
+  ): Promise<ExploreBooksResponseDto> {
+    return this.booksService.explorePublicBooks(query);
+  }
+
+  @Post('import-public')
+  @ApiOperation({ summary: 'Import a public domain book into personal library' })
+  async importPublic(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ImportPublicBookDto,
+  ): Promise<BookUploadResponseDto> {
+    return this.booksService.importPublicBook(userId, dto);
   }
 
   @Get(':id')

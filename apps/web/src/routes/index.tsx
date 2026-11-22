@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
 import { HomePage } from '../pages/HomePage';
+import { ExplorePage } from '../pages/ExplorePage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
@@ -20,6 +21,7 @@ export const AppRoutes: React.FC = () => {
         {/* Public home route */}
         <Route index element={<HomePage />} />
         <Route path="library" element={<HomePage />} />
+        <Route path="explore" element={<ExplorePage />} />
 
         {/* Guest / Public-only routes */}
         <Route

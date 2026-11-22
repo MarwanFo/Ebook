@@ -48,6 +48,12 @@ export const Header: React.FC = () => {
             >
               {isAuthenticated ? 'Library' : 'Overview'}
             </Link>
+            <Link
+              to="/explore"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-ink-700 hover:text-ink-900 hover:bg-paper-100 dark:text-paper-300 dark:hover:text-paper-100 dark:hover:bg-paper-800 transition-colors"
+            >
+              Explore
+            </Link>
             {isAuthenticated && (
               <Link
                 to="/profile"

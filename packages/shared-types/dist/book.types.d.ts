@@ -69,4 +69,33 @@ export interface BookUploadResponseDto {
         hasCover: boolean;
     };
 }
+export interface PublicBookDto {
+    id: number;
+    title: string;
+    authors: string[];
+    subjects: string[];
+    languages: string[];
+    coverUrl: string | null;
+    downloadUrl: string;
+    downloadCount: number;
+}
+export interface ImportPublicBookDto {
+    gutenbergId: number;
+    title: string;
+    author?: string | null;
+    description?: string | null;
+    coverUrl?: string | null;
+    downloadUrl: string;
+}
+export interface ExploreBooksQueryDto {
+    page?: number;
+    search?: string;
+    topic?: string;
+}
+export interface ExploreBooksResponseDto {
+    count: number;
+    nextPage: number | null;
+    previousPage: number | null;
+    results: PublicBookDto[];
+}
 //# sourceMappingURL=book.types.d.ts.map
