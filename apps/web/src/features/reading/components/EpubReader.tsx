@@ -421,18 +421,29 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
   );
 
   // Scrub to approximate percentage
-  const handleSeekPercentage = useCallback((percentage: number) => {
-    if (bookRef.current && bookRef.current.locations && renditionRef.current) {
-      try {
-        const cfi = bookRef.current.locations.cfiFromPercentage(percentage / 100);
-        if (cfi) {
-          renditionRef.current.display(cfi);
-        }
-      } catch {
-        // Fallback if locations are still generating
+  const handleSeekPercentage = useCallback(
+    (percentage: number) => {
+      if ((layout === 'book' || !layout) && epubPages.length > 0) {
+        const targetPage = Math.max(
+          1,
+          Math.min(epubPages.length, Math.round((percentage / 100) * epubPages.length)),
+        );
+        handleFlipPageChange(targetPage);
+        return;
       }
-    }
-  }, []);
+      if (bookRef.current && bookRef.current.locations && renditionRef.current) {
+        try {
+          const cfi = bookRef.current.locations.cfiFromPercentage(percentage / 100);
+          if (cfi) {
+            renditionRef.current.display(cfi);
+          }
+        } catch {
+          // Fallback if locations are still generating
+        }
+      }
+    },
+    [epubPages.length, handleFlipPageChange, layout],
+  );
 
   // Keyboard navigation handler
   useEffect(() => {
@@ -462,6 +473,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
     applyStylesToRendition,
     getSpreadSetting,
     savedProgress,
+    layout,
   });
 
   useEffect(() => {
@@ -472,6 +484,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
       applyStylesToRendition,
       getSpreadSetting,
       savedProgress,
+      layout,
     };
   });
 
@@ -500,6 +513,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
               setEpubPages(extracted);
               setTotalPages(extracted.length);
               setIsExtractingPages(false);
+              setIsLoadingBook(false);
               const saved = callbacksRef.current.savedProgress;
               if (saved?.currentPage && saved.currentPage >= 1) {
                 setCurrentPage(Math.min(extracted.length, saved.currentPage));
@@ -508,7 +522,10 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           })
           .catch((err) => {
             console.warn('FlipBook page extraction error:', err);
-            if (!isCancelled) setIsExtractingPages(false);
+            if (!isCancelled) {
+              setIsExtractingPages(false);
+              setIsLoadingBook(false);
+            }
           });
 
         // Extract Table of Contents
@@ -628,7 +645,16 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           }
         }
 
-        await rendition.display(startTarget);
+        if (
+          callbacksRef.current.getSpreadSetting() === 'none' ||
+          callbacksRef.current.layout === 'two-page' ||
+          callbacksRef.current.layout === 'single-page'
+        ) {
+          await rendition.display(startTarget);
+        } else {
+          // In mode book, start display in background so epubjs measures without blocking
+          rendition.display(startTarget).catch(() => {});
+        }
         if (isCancelled) return;
 
         setIsLoadingBook(false);
@@ -705,7 +731,12 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
         chapterTitle={currentChapter}
         theme={theme}
         layout={layout}
-        onLayoutChange={setLayout}
+        onLayoutChange={(newLayout) => {
+          setLayout(newLayout);
+          if (newLayout !== 'book' && renditionRef.current) {
+            renditionRef.current.display(currentCfi || undefined);
+          }
+        }}
         currentPage={currentPage || 1}
         totalPages={epubPages.length > 0 ? epubPages.length : totalPages}
         onJumpToPage={handleJumpToPage}
@@ -789,7 +820,7 @@ export const EpubReader: React.FC<EpubReaderProps> = ({ bookId, bookTitle, autho
           ref={viewerRef}
           className={
             isBookMode
-              ? 'hidden'
+              ? 'absolute inset-0 pointer-events-none opacity-0 -z-10'
               : 'w-full h-full max-w-6xl mx-auto relative px-2 sm:px-6 md:px-12 py-2'
           }
           style={{ minHeight: '100%' }}

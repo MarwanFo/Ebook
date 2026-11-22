@@ -100,6 +100,45 @@ export async function extractEpubPages(
       return src;
     };
 
+    // Helper to recursively collect leaf content blocks (p, headings, blockquotes, lists, tables, img)
+    const extractBlocks = (container: Element): Element[] => {
+      const blocks: Element[] = [];
+      const walk = (node: Element) => {
+        const tag = node.tagName.toLowerCase();
+        if (
+          [
+            'p',
+            'h1',
+            'h2',
+            'h3',
+            'h4',
+            'h5',
+            'h6',
+            'blockquote',
+            'ul',
+            'ol',
+            'table',
+            'img',
+            'figure',
+            'pre',
+            'hr',
+          ].includes(tag)
+        ) {
+          blocks.push(node);
+          return;
+        }
+        if (node.children.length > 0) {
+          for (const child of Array.from(node.children)) {
+            walk(child);
+          }
+        } else if (node.textContent && node.textContent.trim().length > 0) {
+          blocks.push(node);
+        }
+      };
+      walk(container);
+      return blocks;
+    };
+
     // 3. Process each spine item
     for (const item of spineItems) {
       const href = item.href;
@@ -107,33 +146,38 @@ export async function extractEpubPages(
 
       const cleanHref = (href || '').split('#')[0]?.replace(/^\/+/g, '').toLowerCase() || '';
 
-      // Retrieve raw text from archive or book.load
-      let rawHtml = '';
+      // Load chapter document: book.load returns Document or XMLDocument; archive fallback returns string
+      let doc: Document | null = null;
       try {
-        const archive = (
-          book as unknown as { archive?: { getText?: (u: string) => Promise<string> } }
-        )?.archive;
-        if (archive && typeof archive.getText === 'function') {
-          rawHtml = await archive.getText(href);
+        const loaded = await (book as unknown as { load: (u: string) => Promise<unknown> }).load(
+          href,
+        );
+        if (typeof loaded === 'string') {
+          doc = new DOMParser().parseFromString(loaded, 'text/html');
+        } else if (loaded && typeof loaded === 'object') {
+          doc = (loaded as { ownerDocument?: Document }).ownerDocument || (loaded as Document);
         }
       } catch {
-        // archive fallback
+        // fallback to archive.getText
       }
-      if (
-        !rawHtml &&
-        typeof (book as unknown as { load?: (u: string) => Promise<string> }).load === 'function'
-      ) {
+
+      if (!doc) {
         try {
-          rawHtml = await (book as unknown as { load: (u: string) => Promise<string> }).load(href);
+          const archive = (
+            book as unknown as { archive?: { getText?: (u: string) => Promise<string> } }
+          )?.archive;
+          if (archive && typeof archive.getText === 'function') {
+            const rawText = await archive.getText(href);
+            if (rawText && typeof rawText === 'string') {
+              doc = new DOMParser().parseFromString(rawText, 'text/html');
+            }
+          }
         } catch {
-          // load fallback
+          // archive fallback
         }
       }
-      if (!rawHtml || typeof rawHtml !== 'string') continue;
 
-      // Parse with browser DOMParser
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(rawHtml, 'text/html');
+      if (!doc) continue;
 
       // Strip scripts, styles, link, meta, and Gutenberg boilerplate
       doc
@@ -151,14 +195,17 @@ export async function extractEpubPages(
           img.setAttribute('src', resolvedSrc);
           img.setAttribute(
             'class',
-            'max-h-[560px] max-w-full object-contain mx-auto my-3 rounded-xs shadow-md border border-amber-900/10',
+            'max-h-[520px] max-w-full object-contain mx-auto my-3 rounded-xs shadow-md border border-amber-900/10',
           );
         }
       }
 
+      const body = doc.body || doc.documentElement;
+      if (!body) continue;
+
       // If it's an isolated cover wrapper (e.g. wrap0000.html) with a single cover image
       const isWrapCover = cleanHref.includes('wrap') || cleanHref.includes('cover');
-      if (isWrapCover && images.length === 1 && (doc.body.textContent || '').trim().length < 50) {
+      if (isWrapCover && images.length === 1 && (body.textContent || '').trim().length < 50) {
         const coverImg = images[0];
         const coverSrc = coverImg?.getAttribute('src');
         if (coverSrc) {
@@ -183,14 +230,13 @@ export async function extractEpubPages(
       }
 
       // Find top-level content elements in body
-      const root = doc.body.querySelector('.chapter, article, main, section') || doc.body;
-      const elements = Array.from(root.children);
+      const blocks = extractBlocks(body);
 
-      // If root has no children but body has text, wrap in single page
-      if (elements.length === 0 && (doc.body.innerHTML || '').trim().length > 0) {
+      // If no blocks but body has content, wrap in single page
+      if (blocks.length === 0 && (body.innerHTML || '').trim().length > 0) {
         pages.push({
           pageNumber: pages.length + 1,
-          content: doc.body.innerHTML,
+          content: body.innerHTML,
           title: cleanTitle,
           chapterTitle,
           href,
@@ -202,7 +248,7 @@ export async function extractEpubPages(
       let currentPageHtml = '';
       let currentWordCount = 0;
 
-      for (const el of elements) {
+      for (const el of blocks) {
         const tag = el.tagName.toLowerCase();
         const text = el.textContent || '';
         const words = text.trim().split(/\s+/).filter(Boolean).length;

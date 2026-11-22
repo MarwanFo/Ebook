@@ -560,7 +560,7 @@ const SoftPage = React.forwardRef<HTMLDivElement, SoftPageProps>((props, ref) =>
       >
         {content ? (
           <div
-            className="prose prose-xs sm:prose-sm md:prose-base font-serif leading-relaxed text-justify overflow-hidden max-h-full select-text"
+            className="prose prose-xs sm:prose-sm md:prose-base font-serif leading-relaxed text-justify overflow-hidden max-h-full select-text [&_p]:mb-2.5 [&_p]:leading-relaxed [&_p]:text-justify [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-center [&_h1]:my-2 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-center [&_h2]:my-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-center [&_table]:w-full [&_table]:my-2"
             style={{
               textIndent: '1.25em',
             }}

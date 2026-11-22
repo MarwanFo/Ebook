@@ -41,8 +41,8 @@ function loadStoredSettings(): Partial<ReaderSettingsState> {
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
-    // If legacy 'auto' or unset, default to 'book' mode
-    if (parsed.layout === 'auto' || !parsed.layout) {
+    // If legacy 'auto', 'two-page' or unset, default to 'book' mode for 3D flipbook
+    if (parsed.layout === 'auto' || parsed.layout === 'two-page' || !parsed.layout) {
       parsed.layout = 'book';
     }
     return parsed;
