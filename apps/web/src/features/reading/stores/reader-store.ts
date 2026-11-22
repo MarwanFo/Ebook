@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export type ReaderTheme = 'light' | 'sepia' | 'dark';
 export type ReaderFont = 'serif' | 'sans' | 'mono';
-export type ReaderLayout = 'auto' | 'two-page' | 'single-page';
+export type ReaderLayout = 'book' | 'two-page' | 'single-page' | 'auto';
 
 export interface ReaderSettingsState {
   fontSize: number;
@@ -70,7 +70,7 @@ export const useReaderStore = create<ReaderSettingsState>((set, get) => {
     fontFamily: initial.fontFamily ?? 'serif',
     lineHeight: initial.lineHeight ?? 1.6,
     theme: initial.theme ?? 'sepia',
-    layout: initial.layout ?? 'auto',
+    layout: initial.layout ?? 'book',
 
     setFontSize: (fontSize) => {
       set({ fontSize });

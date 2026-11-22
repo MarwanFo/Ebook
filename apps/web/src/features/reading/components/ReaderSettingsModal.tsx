@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Type, Sun, Moon, Coffee, Columns2, Square, Sparkles } from 'lucide-react';
+import { X, Type, Sun, Moon, Coffee, Columns2, Square, Sparkles, BookOpen } from 'lucide-react';
 import { useReaderStore, ReaderTheme, ReaderFont, ReaderLayout } from '../stores/reader-store';
 
 interface ReaderSettingsModalProps {
@@ -70,9 +70,10 @@ export const ReaderSettingsModal: React.FC<ReaderSettingsModalProps> = ({ isOpen
   ];
 
   const layouts: Array<{ id: ReaderLayout; label: string; icon: typeof Columns2; desc: string }> = [
-    { id: 'auto', label: 'Adaptive', icon: Sparkles, desc: 'Responsive 2-page or 1-page' },
-    { id: 'two-page', label: 'Two Pages', icon: Columns2, desc: 'Authentic book spread' },
+    { id: 'book', label: 'Mode Book', icon: BookOpen, desc: 'Realistic 3D hardcover & desk' },
+    { id: 'two-page', label: 'Two Pages', icon: Columns2, desc: 'Authentic 2-page spread' },
     { id: 'single-page', label: 'Single Page', icon: Square, desc: 'Continuous single column' },
+    { id: 'auto', label: 'Adaptive', icon: Sparkles, desc: 'Responsive 2-page or 1-page' },
   ];
 
   return (

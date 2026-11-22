@@ -43,6 +43,9 @@ describe('useReaderStore', () => {
   });
 
   it('updates layout mode and persists', () => {
+    useReaderStore.getState().setLayout('book');
+    expect(useReaderStore.getState().layout).toBe('book');
+
     useReaderStore.getState().setLayout('two-page');
     expect(useReaderStore.getState().layout).toBe('two-page');
 

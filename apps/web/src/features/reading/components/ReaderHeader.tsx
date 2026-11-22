@@ -1,13 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, List, Sliders, Maximize2, Minimize2, Bookmark } from 'lucide-react';
-import { ReaderTheme } from '../stores/reader-store';
+import {
+  ArrowLeft,
+  List,
+  Sliders,
+  Maximize2,
+  Minimize2,
+  Bookmark,
+  BookOpen,
+  Columns2,
+  Square,
+} from 'lucide-react';
+import { ReaderTheme, ReaderLayout } from '../stores/reader-store';
 
 interface ReaderHeaderProps {
   title: string;
   author?: string | null;
   chapterTitle?: string;
   theme: ReaderTheme;
+  layout?: ReaderLayout;
+  onLayoutChange?: (layout: ReaderLayout) => void;
   isTocOpen: boolean;
   onToggleToc: () => void;
   isBookmarksOpen?: boolean;
@@ -24,6 +36,8 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
   author,
   chapterTitle,
   theme,
+  layout,
+  onLayoutChange,
   isTocOpen,
   onToggleToc,
   isBookmarksOpen = false,
@@ -91,6 +105,45 @@ export const ReaderHeader: React.FC<ReaderHeaderProps> = ({
 
       {/* Right Section: Action Controls */}
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        {/* View Mode Toggle: Mode Book vs Two-Page vs Single Page */}
+        {onLayoutChange && (
+          <div className="flex items-center gap-0.5 border-r border-current/15 pr-2 mr-1">
+            <button
+              type="button"
+              onClick={() => onLayoutChange('book')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                layout === 'book' || !layout ? activeBtnClasses : buttonHoverClasses
+              }`}
+              title="Mode Book (Interactive 3D Book)"
+              aria-label="Mode Book"
+            >
+              <BookOpen className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onLayoutChange('two-page')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                layout === 'two-page' ? activeBtnClasses : buttonHoverClasses
+              }`}
+              title="Two-Page Spread"
+              aria-label="Two-Page Spread"
+            >
+              <Columns2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onLayoutChange('single-page')}
+              className={`p-1.5 rounded-lg transition-colors ${
+                layout === 'single-page' ? activeBtnClasses : buttonHoverClasses
+              }`}
+              title="Single Page View"
+              aria-label="Single Page View"
+            >
+              <Square className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Table of Contents Button */}
         <button
           type="button"
